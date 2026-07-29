@@ -1,36 +1,52 @@
-# [Project name]
+# PathForge
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A browser-based procedural dungeon generator and pathfinding AI visualizer — three generation algorithms, three pathfinding algorithms, live obstacle replanning, and shareable levels. Portfolio project for Moaed.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/pathforge run dev` — run the React frontend (port managed by workflow)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET`
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite, Tailwind CSS, Wouter (routing), TanStack Query
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- DB: PostgreSQL + Drizzle ORM (tables: `levels`, `path_runs`)
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/pathforge/src/engine/` — Pure TypeScript algorithm engine (no React). Generators, pathfinders, state machine
+- `artifacts/pathforge/src/components/CanvasRenderer.tsx` — HTML5 Canvas 2D grid renderer
+- `artifacts/pathforge/src/hooks/useEngine.ts` — Central React hook bridging engine → UI
+- `artifacts/pathforge/src/pages/Home.tsx` — Main editor page
+- `artifacts/pathforge/src/pages/Level.tsx` — Shared level view (/level/:slug)
+- `artifacts/pathforge/src/pages/Gallery.tsx` — Public gallery (/gallery)
+- `artifacts/api-server/src/routes/levels.ts` — REST API for save/load/list/delete levels
+- `lib/db/src/schema/levels.ts` — DB schema for levels + path_runs tables
+- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for API contract)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Engine layer (`src/engine/`) is completely isolated from React — pure TypeScript, zero UI imports. This enables unit testing in isolation and is a deliberate architectural showcase.
+- Grid data stored as flat `number[]` in PostgreSQL jsonb column; reconstructed client-side on load.
+- `ownerToken` pattern instead of full auth — returned once at save time, lets creator delete without login. Intentional scope trade-off.
+- All three pathfinders (A*, Dijkstra, BFS) share the same return shape — differ only in priority function.
+- Rate limiting on POST /api/levels is in-memory (per process) — sufficient for a portfolio demo.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Main editor** (`/`): Auto-generates a BSP dungeon + runs A* on load. Three generation algorithms (BSP rooms, Cellular Automata caves, Recursive Backtracker maze). Three pathfinding algorithms with animated frontier expansion and agent walk. Live obstacle drop + replanning. Save & Share via short URL.
+- **Shared level view** (`/level/:slug`): Load any saved level by slug, rendered read-only with optional pathfinding.
+- **Gallery** (`/gallery`): Paginated public gallery with stats.
 
 ## User preferences
 
@@ -38,7 +54,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Orval generates `zod.int()` for OpenAPI `integer` types, which doesn't exist in Zod v3. Use `number` type in the OpenAPI spec instead.
+- `useRef<T>()` in React 19 types requires an initial value argument: use `useRef<T | undefined>(undefined)`.
+- `queryKey` is required in TanStack Query v5 `UseQueryOptions` — always pass `getGet*QueryKey(...)` when using the `query:` options object.
 
 ## Pointers
 

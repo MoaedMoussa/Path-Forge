@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: PathForge API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: levels
+    description: Level operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,136 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /levels:
+    post:
+      operationId: createLevel
+      tags: [levels]
+      summary: Save a generated level
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LevelInput"
+      responses:
+        "201":
+          description: Level saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LevelSaveResult"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      operationId: listLevels
+      tags: [levels]
+      summary: Paginated gallery of saved levels, newest first
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: number
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: number
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of levels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LevelListResult"
+
+  /levels/{slug}:
+    get:
+      operationId: getLevel
+      tags: [levels]
+      summary: Fetch one level by share code
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Level found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Level"
+        "404":
+          description: Level not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteLevel
+      tags: [levels]
+      summary: Delete a level using owner token
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LevelDeleteInput"
+      responses:
+        "200":
+          description: Level deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "403":
+          description: Invalid owner token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Level not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /levels/stats:
+    get:
+      operationId: getLevelStats
+      tags: [levels]
+      summary: Gallery stats — total saved levels and algorithm distribution
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LevelStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +166,138 @@ components:
       required:
         - status
 
+    LevelInput:
+      type: object
+      required: [algorithm, config, gridData, width, height, seed]
+      properties:
+        algorithm:
+          type: string
+          enum: [bsp, cellular_automata, maze]
+        config:
+          type: object
+          description: Algorithm-specific generation parameters
+          additionalProperties: true
+        gridData:
+          description: The generated grid as a flat array of cell types (0=wall,1=floor)
+          type: array
+          items:
+            type: number
+        width:
+          type: number
+          minimum: 10
+          maximum: 200
+        height:
+          type: number
+          minimum: 10
+          maximum: 200
+        seed:
+          type: number
+
+    LevelSaveResult:
+      type: object
+      required: [slug, ownerToken, shareUrl]
+      properties:
+        slug:
+          type: string
+        ownerToken:
+          type: string
+        shareUrl:
+          type: string
+
+    Level:
+      type: object
+      required: [id, slug, algorithm, config, gridData, width, height, seed, viewCount, createdAt]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        algorithm:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        gridData:
+          type: array
+          items:
+            type: number
+        width:
+          type: number
+        height:
+          type: number
+        seed:
+          type: number
+        viewCount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    LevelSummary:
+      type: object
+      required: [id, slug, algorithm, width, height, seed, viewCount, createdAt]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        algorithm:
+          type: string
+        width:
+          type: number
+        height:
+          type: number
+        seed:
+          type: number
+        viewCount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    LevelListResult:
+      type: object
+      required: [levels, total, page, limit]
+      properties:
+        levels:
+          type: array
+          items:
+            $ref: "#/components/schemas/LevelSummary"
+        total:
+          type: number
+        page:
+          type: number
+        limit:
+          type: number
+
+    LevelDeleteInput:
+      type: object
+      required: [ownerToken]
+      properties:
+        ownerToken:
+          type: string
+
+    LevelStats:
+      type: object
+      required: [totalLevels, byAlgorithm]
+      properties:
+        totalLevels:
+          type: number
+        byAlgorithm:
+          type: object
+          additionalProperties:
+            type: number
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
