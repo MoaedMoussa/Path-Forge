@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Grid, Cell, CellType, 
   generateBSP, generateCellularAutomata, generateMaze, 
-  findPathAStar, findPathDijkstra, findPathBFS, 
-  AppState, AgentStateMachine, PathfinderResult 
+  PATHFINDING_ALGORITHMS, PathfindingAlgorithm, runPathfinder,
+  AppState, AgentStateMachine, PathfinderResult,
 } from '../engine';
 import { RNG } from '../engine/grid/seededRandom';
 
@@ -13,19 +13,23 @@ export interface UseEngineResult {
   exploredCells: Set<string>;
   pathCells: Cell[];
   agentPos: Cell | null;
+  activeSearchCell: Cell | null;
+  animationProgress: {
+    phase: 'idle' | 'searching' | 'tracing' | 'complete';
+    current: number;
+    total: number;
+  };
   stats: {
     nodesExplored: number;
     pathLength: number;
     timeMs: number;
   };
   comparison: {
-    astar?: PathfinderResult;
-    dijkstra?: PathfinderResult;
-    bfs?: PathfinderResult;
+    [algorithm: string]: PathfinderResult;
   } | null;
   actions: {
     generate: (algo: string, width: number, height: number, seed: number, config: any) => void;
-    findPath: (algo: string) => void;
+    findPath: (algo: PathfindingAlgorithm) => void;
     play: () => void;
     pause: () => void;
     reset: () => void;
@@ -44,12 +48,18 @@ export function useEngine(): UseEngineResult {
   const [exploredCells, setExploredCells] = useState<Set<string>>(new Set());
   const [pathCells, setPathCells] = useState<Cell[]>([]);
   const [agentPos, setAgentPos] = useState<Cell | null>(null);
+  const [activeSearchCell, setActiveSearchCell] = useState<Cell | null>(null);
+  const [animationProgress, setAnimationProgress] = useState({
+    phase: 'idle' as 'idle' | 'searching' | 'tracing' | 'complete',
+    current: 0,
+    total: 0,
+  });
   
   const [stats, setStats] = useState({ nodesExplored: 0, pathLength: 0, timeMs: 0 });
-  const [comparison, setComparison] = useState<{astar?: PathfinderResult, dijkstra?: PathfinderResult, bfs?: PathfinderResult} | null>(null);
+  const [comparison, setComparison] = useState<Record<string, PathfinderResult> | null>(null);
 
   const [speed, setSpeed] = useState(1);
-  const [currentAlgo, setCurrentAlgo] = useState('astar');
+  const [currentAlgo, setCurrentAlgo] = useState<PathfindingAlgorithm>('astar');
 
   // Animation refs
   const animFrame = useRef<number | undefined>(undefined);
@@ -83,12 +93,20 @@ export function useEngine(): UseEngineResult {
         // do multiple per frame if high speed
         const steps = Math.max(1, Math.floor(speed));
         const newSet = new Set(exploredCells);
+        let currentCell: Cell | null = null;
         for (let i = 0; i < steps && s.visitedIdx < s.visited.length; i++) {
           const c = s.visited[s.visitedIdx++];
           newSet.add(`${c.x},${c.y}`);
+          currentCell = c;
         }
         setExploredCells(newSet);
+        setActiveSearchCell(currentCell);
         setStats(prev => ({ ...prev, nodesExplored: s.visitedIdx }));
+        setAnimationProgress({
+          phase: 'searching',
+          current: s.visitedIdx,
+          total: s.visited.length,
+        });
       } 
       // Then animate path reveal & agent walk
       else if (s.pathIdx < s.path.length) {
@@ -102,10 +120,22 @@ export function useEngine(): UseEngineResult {
         }
         setPathCells(nextPath);
         setAgentPos(nextAgent);
+        setActiveSearchCell(null);
         setStats(prev => ({ ...prev, pathLength: s.pathIdx }));
+        setAnimationProgress({
+          phase: 'tracing',
+          current: s.pathIdx,
+          total: s.path.length,
+        });
       }
       // Done animating
       else {
+        setActiveSearchCell(null);
+        setAnimationProgress({
+          phase: 'complete',
+          current: s.path.length,
+          total: s.path.length,
+        });
         fsm.transition(AppState.Ready);
         return;
       }
@@ -129,6 +159,8 @@ export function useEngine(): UseEngineResult {
     setExploredCells(new Set());
     setPathCells([]);
     setAgentPos(null);
+    setActiveSearchCell(null);
+    setAnimationProgress({ phase: 'idle', current: 0, total: 0 });
     setComparison(null);
     
     setTimeout(() => {
@@ -172,11 +204,13 @@ export function useEngine(): UseEngineResult {
     setExploredCells(new Set());
     setPathCells([]);
     setAgentPos(null);
+    setActiveSearchCell(null);
+    setAnimationProgress({ phase: 'idle', current: 0, total: 0 });
     setComparison(null);
     fsm.transition(AppState.Ready);
   };
 
-  const findPath = (algo: string) => {
+  const findPath = (algo: PathfindingAlgorithm) => {
     if (!grid) return;
     fsm.transition(AppState.Pathfinding);
     setCurrentAlgo(algo);
@@ -195,15 +229,18 @@ export function useEngine(): UseEngineResult {
         return;
       }
       
-      let res: PathfinderResult;
-      if (algo === 'astar') res = findPathAStar(grid, start, goal);
-      else if (algo === 'dijkstra') res = findPathDijkstra(grid, start, goal);
-      else res = findPathBFS(grid, start, goal);
+      const res = runPathfinder(algo, grid, start, goal);
       
       setExploredCells(new Set());
       setPathCells([]);
       setAgentPos(start);
+      setActiveSearchCell(null);
       setStats({ nodesExplored: 0, pathLength: 0, timeMs: res.executionTimeMs });
+      setAnimationProgress({
+        phase: res.visitedOrder.length > 0 ? 'searching' : 'tracing',
+        current: 0,
+        total: res.visitedOrder.length || res.path.length,
+      });
       
       animState.current = {
         visited: res.visitedOrder,
@@ -231,11 +268,14 @@ export function useEngine(): UseEngineResult {
       }
       if (!start || !goal) return fsm.transition(AppState.Ready);
       
-      const astar = findPathAStar(grid, start, goal);
-      const dijkstra = findPathDijkstra(grid, start, goal);
-      const bfs = findPathBFS(grid, start, goal);
-      
-      setComparison({ astar, dijkstra, bfs });
+      const results = Object.fromEntries(
+        PATHFINDING_ALGORITHMS.map(definition => [
+          definition.id,
+          runPathfinder(definition.id, grid, start, goal),
+        ]),
+      ) as Record<string, PathfinderResult>;
+
+      setComparison(results);
       fsm.transition(AppState.Ready);
     }, 10);
   }
@@ -272,16 +312,19 @@ export function useEngine(): UseEngineResult {
       if (goal) {
         grid.setCell(agentPos.x, agentPos.y, CellType.START);
         
-        let res: PathfinderResult;
-        if (currentAlgo === 'astar') res = findPathAStar(grid, agentPos, goal);
-        else if (currentAlgo === 'dijkstra') res = findPathDijkstra(grid, agentPos, goal);
-        else res = findPathBFS(grid, agentPos, goal);
+        const res = runPathfinder(currentAlgo, grid, agentPos, goal);
         
         // Reset only future path, keep explored cells to show the history of where it searched?
         // Let's clear explored cells so it's a fresh search from new position
         setExploredCells(new Set());
         setPathCells([]);
+        setActiveSearchCell(null);
         setStats(prev => ({ ...prev, nodesExplored: 0, pathLength: 0, timeMs: res.executionTimeMs }));
+        setAnimationProgress({
+          phase: res.visitedOrder.length > 0 ? 'searching' : 'tracing',
+          current: 0,
+          total: res.visitedOrder.length || res.path.length,
+        });
         
         animState.current = {
           visited: res.visitedOrder,
@@ -297,7 +340,27 @@ export function useEngine(): UseEngineResult {
   };
 
   const play = () => {
-    if (appState === AppState.Ready && animState.current.path.length > 0) {
+    if (appState !== AppState.Ready || animState.current.path.length === 0) return;
+
+    const s = animState.current;
+    const animationComplete = s.visitedIdx >= s.visited.length && s.pathIdx >= s.path.length;
+    if (animationComplete) {
+      s.visitedIdx = 0;
+      s.pathIdx = 0;
+      s.lastTime = performance.now();
+      setExploredCells(new Set());
+      setPathCells([]);
+      setAgentPos(s.path[0] ?? null);
+      setActiveSearchCell(null);
+      setStats(prev => ({ ...prev, nodesExplored: 0, pathLength: 0 }));
+      setAnimationProgress({
+        phase: s.visited.length > 0 ? 'searching' : 'tracing',
+        current: 0,
+        total: s.visited.length || s.path.length,
+      });
+    }
+
+    if (animState.current.path.length > 0) {
       fsm.transition(AppState.Animating);
     }
   }
@@ -312,6 +375,8 @@ export function useEngine(): UseEngineResult {
     fsm.transition(AppState.Ready);
     setExploredCells(new Set());
     setPathCells([]);
+    setActiveSearchCell(null);
+    setAnimationProgress({ phase: 'idle', current: 0, total: 0 });
     setComparison(null);
     if (grid) {
       for (let y = 0; y < grid.height; y++) {
@@ -327,7 +392,7 @@ export function useEngine(): UseEngineResult {
   }
 
   return {
-    grid, appState, exploredCells, pathCells, agentPos, stats, comparison,
+    grid, appState, exploredCells, pathCells, agentPos, activeSearchCell, animationProgress, stats, comparison,
     actions: { generate, findPath, play, pause, reset, setSpeed, dropObstacle, compareAll, loadLevel }
   }
 }

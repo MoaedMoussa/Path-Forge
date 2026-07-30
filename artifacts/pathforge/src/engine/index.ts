@@ -7,6 +7,10 @@ export * from './pathfinding/PathfinderResult';
 export * from './pathfinding/aStar';
 export * from './pathfinding/dijkstra';
 export * from './pathfinding/bfs';
+export * from './pathfinding/bidirectionalBfs';
+export * from './pathfinding/depthFirst';
+export * from './pathfinding/greedyBestFirst';
+export * from './pathfinding/algorithms';
 export * from './agent/agentStateMachine';
 
 export enum LevelInputAlgorithm {

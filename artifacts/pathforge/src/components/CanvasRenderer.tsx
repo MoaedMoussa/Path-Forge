@@ -6,11 +6,12 @@ interface CanvasRendererProps {
   exploredCells: Set<string>;
   pathCells: Cell[];
   agentPos: Cell | null;
+  activeSearchCell?: Cell | null;
   animState?: string;
   onCellClick?: (x: number, y: number) => void;
 }
 
-export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, animState, onCellClick }: CanvasRendererProps) {
+export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, activeSearchCell, animState, onCellClick }: CanvasRendererProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -60,6 +61,16 @@ export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, animS
           ctx.fillStyle = 'rgba(79, 70, 229, 0.4)'; // Indigo tint
           ctx.fillRect(px, py, cellSize, cellSize);
         }
+
+        // Highlight the cell currently being expanded so the search feels
+        // visibly alive instead of appearing as a static field of visited cells.
+        if (activeSearchCell?.x === x && activeSearchCell?.y === y) {
+          ctx.fillStyle = 'rgba(34, 211, 238, 0.92)';
+          ctx.fillRect(px + 1, py + 1, Math.max(1, cellSize - 2), Math.max(1, cellSize - 2));
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = Math.max(1, cellSize / 8);
+          ctx.strokeRect(px + 1, py + 1, Math.max(1, cellSize - 2), Math.max(1, cellSize - 2));
+        }
       }
     }
 
@@ -94,7 +105,7 @@ export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, animS
       ctx.stroke();
     }
 
-  }, [grid, exploredCells, pathCells, agentPos]); // Re-render when these change
+  }, [grid, exploredCells, pathCells, agentPos, activeSearchCell]); // Re-render when these change
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!grid || !onCellClick) return;

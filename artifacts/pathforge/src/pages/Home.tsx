@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useEngine } from '../hooks/useEngine';
 import { CanvasRenderer } from '../components/CanvasRenderer';
 import { Button, Input, Label, Card, Badge } from '../components/ui';
-import { AppState, LevelInputAlgorithm } from '../engine';
+import { AppState, LevelInputAlgorithm, PATHFINDING_ALGORITHMS, PathfindingAlgorithm } from '../engine';
 import { useCreateLevel } from '@workspace/api-client-react';
 import { Play, Pause, Square, FastForward, RotateCcw, Share2, Layers, Cpu, Compass } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +13,8 @@ export default function Home() {
   const [width, setWidth] = useState(60);
   const [height, setHeight] = useState(40);
   const [seed, setSeed] = useState(42);
-  const [pathAlgo, setPathAlgo] = useState('astar');
+  const [pathAlgo, setPathAlgo] = useState<PathfindingAlgorithm>('astar');
+  const [speed, setSpeed] = useState(1);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState<{ url: string, ownerToken: string } | null>(null);
   
@@ -26,13 +27,18 @@ export default function Home() {
     if (!autoDemoRan.current) {
       autoDemoRan.current = true;
       engine.actions.generate('bsp', 60, 40, 42, {});
-      // Wait for Ready, then findPath
-      setTimeout(() => {
-        engine.actions.findPath('astar');
-      }, 500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (autoDemoRan.current && engine.appState === AppState.Ready && !engine.grid) {
+      return;
+    }
+    if (autoDemoRan.current && engine.appState === AppState.Ready && engine.grid && engine.stats.timeMs === 0) {
+      engine.actions.findPath('astar');
+    }
+  }, [engine.appState, engine.grid, engine.stats.timeMs, engine.actions]);
 
   const handleGenerate = () => {
     engine.actions.generate(algo, width, height, seed, {});
@@ -67,7 +73,7 @@ export default function Home() {
   return (
     <div className="flex-1 flex w-full">
       {/* LEFT PANEL */}
-      <div className="w-80 border-r border-border bg-card flex flex-col shrink-0 z-10">
+      <div className="w-80 border-r border-border bg-card flex flex-col shrink-0 z-10 overflow-y-auto">
         <div className="p-4 border-b border-border bg-black/20">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xs font-mono font-bold tracking-widest text-primary flex items-center gap-2">
@@ -127,7 +133,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="p-4 border-b border-border bg-black/20 flex-1">
+        <div className="p-4 border-b border-border bg-black/20">
           <h2 className="text-xs font-mono font-bold tracking-widest text-primary flex items-center gap-2 mb-4">
             <Compass className="w-4 h-4" /> PATHFINDER
           </h2>
@@ -136,21 +142,20 @@ export default function Home() {
             <div className="space-y-2">
               <Label>Algorithm</Label>
               <div className="grid grid-cols-1 gap-2">
-                {[
-                  { id: 'astar', label: 'A* (Heuristic)' },
-                  { id: 'dijkstra', label: 'Dijkstra (Uniform)' },
-                  { id: 'bfs', label: 'BFS (Unweighted)' },
-                ].map(a => (
+                {PATHFINDING_ALGORITHMS.map(a => (
                   <label key={a.id} className="flex items-center gap-2 text-sm font-mono cursor-pointer p-2 rounded border border-border bg-black/30 hover:bg-muted transition-colors">
                     <input 
                       type="radio" 
                       name="palgo" 
                       value={a.id} 
                       checked={pathAlgo === a.id} 
-                      onChange={(e) => setPathAlgo(e.target.value)} 
+                      onChange={() => setPathAlgo(a.id)} 
                       className="accent-primary"
                     />
-                    {a.label}
+                    <span className="min-w-0">
+                      <span className="block leading-tight">{a.label}</span>
+                      <span className="block text-[10px] text-muted-foreground leading-tight mt-0.5">{a.detail}</span>
+                    </span>
                   </label>
                 ))}
               </div>
@@ -182,42 +187,84 @@ export default function Home() {
             exploredCells={engine.exploredCells} 
             pathCells={engine.pathCells}
             agentPos={engine.agentPos}
+            activeSearchCell={engine.activeSearchCell}
             animState={engine.appState}
             onCellClick={(x, y) => engine.actions.dropObstacle(x, y)}
           />
+
+          <div className="absolute top-10 left-10 pointer-events-none z-10 font-mono">
+            <div className="inline-flex items-center gap-2 rounded border border-primary/30 bg-black/80 px-3 py-2 shadow-lg backdrop-blur">
+              <span className={`h-2 w-2 rounded-full ${
+                engine.animationProgress.phase === 'searching'
+                  ? 'bg-cyan-400 animate-pulse'
+                  : engine.animationProgress.phase === 'tracing'
+                    ? 'bg-amber-400 animate-pulse'
+                    : engine.animationProgress.phase === 'complete'
+                      ? 'bg-green-400'
+                      : 'bg-muted-foreground'
+              }`} />
+              <span className="text-[10px] tracking-widest text-muted-foreground">
+                {engine.animationProgress.phase === 'searching'
+                  ? 'LIVE SEARCH'
+                  : engine.animationProgress.phase === 'tracing'
+                    ? 'TRACING ROUTE'
+                    : engine.animationProgress.phase === 'complete'
+                      ? 'ROUTE COMPLETE'
+                      : 'READY'}
+              </span>
+              {engine.animationProgress.total > 0 && (
+                <>
+                  <span className="h-3 w-px bg-border" />
+                  <span className="text-xs font-bold text-white tabular-nums">
+                    {engine.animationProgress.current}/{engine.animationProgress.total}
+                  </span>
+                </>
+              )}
+            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground/80 tracking-wide">
+              {engine.appState === AppState.Animating ? 'Cyan cursor = frontier currently expanding' : 'Click a floor tile to inject an obstacle'}
+            </p>
+          </div>
           
           {/* Compare Overlay */}
           {engine.comparison && (
             <div className="absolute inset-x-6 top-6 bottom-6 bg-black/80 backdrop-blur border border-border p-8 overflow-auto z-20">
               <h3 className="text-xl font-mono text-primary mb-6 flex items-center gap-2"><Cpu /> ALGORITHM COMPARISON</h3>
-              <div className="grid grid-cols-3 gap-6">
-                {[
-                  { name: 'A*', data: engine.comparison.astar },
-                  { name: 'Dijkstra', data: engine.comparison.dijkstra },
-                  { name: 'BFS', data: engine.comparison.bfs },
-                ].map(c => (
-                  <Card key={c.name} className="p-6 bg-black border-border">
-                    <h4 className="text-lg font-mono text-white mb-4">{c.name}</h4>
+              <p className="font-mono text-xs text-muted-foreground -mt-3 mb-5">
+                All algorithms run against the same grid, start, and goal. Optimal strategies guarantee the shortest available route.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {PATHFINDING_ALGORITHMS.map(definition => {
+                  const data = engine.comparison?.[definition.id];
+                  return (
+                  <Card key={definition.id} className="p-5 bg-black border-border">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <h4 className="text-base font-mono text-white">{definition.label}</h4>
+                      <Badge variant="outline" className={definition.optimal ? 'text-[9px] border-green-500/30 text-green-400' : 'text-[9px] border-amber-500/30 text-amber-400'}>
+                        {definition.optimal ? 'OPTIMAL' : 'EXPLORATORY'}
+                      </Badge>
+                    </div>
                     <div className="space-y-4 font-mono text-sm">
                       <div className="flex justify-between border-b border-border/50 pb-2">
                         <span className="text-muted-foreground">Found Path:</span>
-                        <span className={c.data?.found ? "text-green-500" : "text-red-500"}>{c.data?.found ? 'YES' : 'NO'}</span>
+                        <span className={data?.found ? "text-green-500" : "text-red-500"}>{data?.found ? 'YES' : 'NO'}</span>
                       </div>
                       <div className="flex justify-between border-b border-border/50 pb-2">
                         <span className="text-muted-foreground">Nodes Explored:</span>
-                        <span className="text-cyan-400">{c.data?.nodesExplored}</span>
+                        <span className="text-cyan-400">{data?.nodesExplored}</span>
                       </div>
                       <div className="flex justify-between border-b border-border/50 pb-2">
                         <span className="text-muted-foreground">Path Length:</span>
-                        <span className="text-amber-400">{c.data?.path.length}</span>
+                        <span className="text-amber-400">{data?.path.length}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Execution Time:</span>
-                        <span className="text-white">{c.data?.executionTimeMs.toFixed(2)} ms</span>
+                        <span className="text-white">{data?.executionTimeMs.toFixed(2)} ms</span>
                       </div>
                     </div>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
               <Button className="mt-8" onClick={() => engine.actions.reset()}>CLOSE COMPARISON</Button>
             </div>
@@ -244,17 +291,10 @@ export default function Home() {
               {[1, 2, 5, 10].map(s => (
                 <button 
                   key={s} 
-                  className={`px-2 py-1 rounded transition-colors ${s === 1 ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                  onClick={(e) => {
+                  className={`px-2 py-1 rounded transition-colors ${s === speed ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                  onClick={() => {
                     engine.actions.setSpeed(s);
-                    // update active state manually since we don't store speed in home state
-                    const btns = e.currentTarget.parentElement?.querySelectorAll('button');
-                    btns?.forEach(b => {
-                      b.classList.remove('bg-primary', 'text-primary-foreground');
-                      b.classList.add('hover:bg-muted');
-                    });
-                    e.currentTarget.classList.add('bg-primary', 'text-primary-foreground');
-                    e.currentTarget.classList.remove('hover:bg-muted');
+                    setSpeed(s);
                   }}
                 >{s}x</button>
               ))}

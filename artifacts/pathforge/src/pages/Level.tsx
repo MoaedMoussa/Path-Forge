@@ -90,6 +90,7 @@ export default function Level() {
           exploredCells={engine.exploredCells} 
           pathCells={engine.pathCells}
           agentPos={engine.agentPos}
+          activeSearchCell={engine.activeSearchCell}
           animState={engine.appState}
         />
         
