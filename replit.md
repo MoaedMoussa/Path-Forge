@@ -1,6 +1,6 @@
 # PathForge
 
-A browser-based procedural dungeon generator and pathfinding AI visualizer — three generation algorithms, three pathfinding algorithms, live obstacle replanning, and shareable levels. Portfolio project for Moaed.
+A browser-based computer-science learning platform: a procedural dungeon generator and pathfinding AI visualizer, plus an interactive data-structures academy. Includes three generation algorithms, six pathfinding algorithms, live obstacle replanning, shareable levels, and hands-on curriculum labs. Portfolio project for Moaed.
 
 ## Run & Operate
 
@@ -30,6 +30,10 @@ A browser-based procedural dungeon generator and pathfinding AI visualizer — t
 - `artifacts/pathforge/src/pages/Home.tsx` — Main editor page
 - `artifacts/pathforge/src/pages/Level.tsx` — Shared level view (/level/:slug)
 - `artifacts/pathforge/src/pages/Gallery.tsx` — Public gallery (/gallery)
+- `artifacts/pathforge/src/pages/Courses.tsx` — Data-structures academy curriculum catalog (/courses)
+- `artifacts/pathforge/src/pages/Lesson.tsx` — Interactive individual course lessons (/courses/:id)
+- `artifacts/pathforge/src/components/CourseVisualizer.tsx` — Client-side data structure and algorithm simulators
+- `artifacts/pathforge/src/data/courseContent.ts` — Curriculum copy, concepts, complexity notes, and interview prompts
 - `artifacts/api-server/src/routes/levels.ts` — REST API for save/load/list/delete levels
 - `lib/db/src/schema/levels.ts` — DB schema for levels + path_runs tables
 - `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth for API contract)
@@ -44,9 +48,10 @@ A browser-based procedural dungeon generator and pathfinding AI visualizer — t
 
 ## Product
 
-- **Main editor** (`/`): Auto-generates a BSP dungeon + runs A* on load. Three generation algorithms (BSP rooms, Cellular Automata caves, Recursive Backtracker maze). Three pathfinding algorithms with animated frontier expansion and agent walk. Live obstacle drop + replanning. Save & Share via short URL.
+- **Main editor** (`/`): Auto-generates a BSP dungeon + runs A* on load. Three generation algorithms (BSP rooms, Cellular Automata caves, Recursive Backtracker maze). Six pathfinding algorithms (A*, Dijkstra, BFS, Bidirectional BFS, Greedy Best-First, DFS) with animated frontier expansion and agent walk. Live obstacle drop + replanning. Save & Share via short URL.
 - **Shared level view** (`/level/:slug`): Load any saved level by slug, rendered read-only with optional pathfinding.
 - **Gallery** (`/gallery`): Paginated public gallery with stats.
+- **Academy** (`/courses`): Seven interactive data-structure and algorithm modules: arrays, linked lists, stacks & queues, searching, sorting, binary search trees, and graphs. Each lesson has a live lab, complexity explanation, mental model, and interview prompt.
 
 ## User preferences
 

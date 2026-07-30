@@ -8,6 +8,8 @@ import { Layout } from './components/Layout';
 import Home from './pages/Home';
 import Level from './pages/Level';
 import Gallery from './pages/Gallery';
+import Courses from './pages/Courses';
+import Lesson from './pages/Lesson';
 
 const queryClient = new QueryClient();
 
@@ -18,6 +20,8 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/level/:slug" component={Level} />
         <Route path="/gallery" component={Gallery} />
+        <Route path="/courses" component={Courses} />
+        <Route path="/courses/:id" component={Lesson} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

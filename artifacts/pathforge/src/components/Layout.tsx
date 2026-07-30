@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { Activity, LayoutGrid, Layers, Share2, Github, Cpu } from 'lucide-react';
+import { Activity, Cpu, GraduationCap } from 'lucide-react';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -25,6 +25,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               className={`px-3 py-1.5 rounded transition-colors hover:text-foreground ${location === '/gallery' ? 'bg-secondary text-foreground' : ''}`}
             >
               [ GALLERY ]
+            </Link>
+            <Link 
+              href="/courses" 
+              className={`px-3 py-1.5 rounded transition-colors hover:text-foreground ${location === '/courses' || location.startsWith('/courses/') ? 'bg-secondary text-foreground' : ''}`}
+            >
+              [ COURSES ]
             </Link>
           </nav>
         </div>
