@@ -5,6 +5,7 @@ import NotFound from '@/pages/not-found';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 
 import { Layout } from './components/Layout';
+import Landing from './pages/Landing';
 import Home from './pages/Home';
 import Level from './pages/Level';
 import Gallery from './pages/Gallery';
@@ -17,7 +18,8 @@ function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Home} />
+        <Route path="/" component={Landing} />
+        <Route path="/lab" component={Home} />
         <Route path="/level/:slug" component={Level} />
         <Route path="/gallery" component={Gallery} />
         <Route path="/courses" component={Courses} />

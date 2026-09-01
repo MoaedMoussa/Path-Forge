@@ -27,6 +27,27 @@ export interface LessonStep {
   detail: string;
 }
 
+export interface QuizQuestion {
+  prompt: string;
+  options: string[];
+  answerIndex: number;
+  explanation: string;
+}
+
+export interface PuzzleStep {
+  id: string;
+  label: string;
+}
+
+export interface PuzzleChallenge {
+  title: string;
+  prompt: string;
+  steps: PuzzleStep[];
+  solutionOrder: string[];
+  successMessage: string;
+  hint: string;
+}
+
 export interface CourseLesson {
   id: CourseId;
   title: string;

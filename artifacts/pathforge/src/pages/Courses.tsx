@@ -28,7 +28,7 @@ export default function Courses() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/courses/arrays"><Button size="lg"><PlayCircle className="w-4 h-4 mr-2" /> START LEARNING</Button></Link>
-              <Link href="/"><Button size="lg" variant="outline">OPEN PATHFINDING LAB <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
+              <Link href="/lab"><Button size="lg" variant="outline">OPEN PATHFINDING LAB <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
             </div>
           </div>
           <div className="relative mt-10 grid grid-cols-3 max-w-xl border-t border-border/70 pt-5 gap-4 font-mono">
@@ -94,7 +94,7 @@ export default function Courses() {
               <p className="mt-2 max-w-2xl text-xs font-mono leading-5 text-muted-foreground">Apply graph traversal, queues, priority heuristics, and complexity trade-offs in the original procedural dungeon lab.</p>
             </div>
           </div>
-          <Link href="/"><Button variant="outline">ENTER ALGORITHM LAB <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
+          <Link href="/lab"><Button variant="outline">ENTER ALGORITHM LAB <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
         </section>
       </div>
     </div>

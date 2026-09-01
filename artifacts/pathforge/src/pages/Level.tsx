@@ -58,7 +58,7 @@ export default function Level() {
     return (
       <div className="flex-1 flex items-center justify-center flex-col gap-4 font-mono text-destructive">
         <p>[ ERROR: LEVEL NOT FOUND ]</p>
-        <Link href="/"><Button variant="outline">RETURN TO LAB</Button></Link>
+        <Link href="/lab"><Button variant="outline">RETURN TO LAB</Button></Link>
       </div>
     );
   }
@@ -78,7 +78,7 @@ export default function Level() {
           <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:bg-destructive hover:text-white" onClick={handleDelete} disabled={deleteLevel.isPending}>
             <Trash2 className="w-3 h-3 mr-1" /> DELETE
           </Button>
-          <Link href="/">
+          <Link href="/lab">
             <Button variant="outline" size="sm" className="h-7 text-xs">CREATE YOUR OWN →</Button>
           </Link>
         </div>
