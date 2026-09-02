@@ -32,8 +32,8 @@ export default function Courses() {
             </div>
           </div>
           <div className="relative mt-10 grid grid-cols-3 max-w-xl border-t border-border/70 pt-5 gap-4 font-mono">
-            <Summary value="7" label="Interactive modules" />
-            <Summary value="14+" label="Core concepts" />
+            <Summary value={COURSE_LESSONS.length.toString()} label="Interactive modules" />
+            <Summary value={COURSE_LESSONS.reduce((acc, curr) => acc + curr.concepts.length, 0).toString()} label="Core concepts" />
             <Summary value="1" label="Algorithm playground" />
           </div>
         </section>

@@ -4,8 +4,11 @@ import { CanvasRenderer } from '../components/CanvasRenderer';
 import { Button, Input, Label, Card, Badge } from '../components/ui';
 import { AppState, LevelInputAlgorithm, PATHFINDING_ALGORITHMS, PathfindingAlgorithm } from '../engine';
 import { useCreateLevel } from '@workspace/api-client-react';
-import { Play, Pause, Square, FastForward, RotateCcw, Share2, Layers, Cpu, Compass } from 'lucide-react';
+import { Play, Pause, Square, FastForward, RotateCcw, Share2, Layers, Cpu, Compass, BookOpenCheck, Award, Star, Medal, Trophy, Flame } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useCourseProgress } from '@/hooks/useCourseProgress';
+import { COURSE_LESSONS } from '@/data/courseContent';
+import { Progress } from '@/components/ui/progress';
 
 export default function Home() {
   const engine = useEngine();
@@ -20,6 +23,16 @@ export default function Home() {
   
   const { toast } = useToast();
   const createLevel = useCreateLevel();
+  const { summary } = useCourseProgress();
+  const totalCourses = COURSE_LESSONS.length;
+  const progressPercent = Math.round((summary.completed / totalCourses) * 100) || 0;
+
+  const BADGES = [
+    { threshold: 1, label: 'STARTER', icon: Star, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/30' },
+    { threshold: 5, label: 'SCHOLAR', icon: Medal, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/30' },
+    { threshold: 10, label: 'VETERAN', icon: Award, color: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/30' },
+    { threshold: 15, label: 'MASTER', icon: Trophy, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/30' },
+  ];
   
   const autoDemoRan = useRef(false);
 
@@ -169,6 +182,51 @@ export default function Home() {
                 COMPARE
               </Button>
             </div>
+          </div>
+        </div>
+
+        <div className="p-4 border-b border-border bg-black/20">
+          <h2 className="text-xs font-mono font-bold tracking-widest text-primary flex items-center gap-2 mb-4">
+            <BookOpenCheck className="w-4 h-4" /> ACADEMY PROGRESS
+          </h2>
+          <div className="space-y-2 mb-4">
+            <div className="flex justify-between text-xs font-mono text-muted-foreground">
+              <span>{summary.completed} / {totalCourses} Lessons</span>
+              <span>{progressPercent}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 bg-black/40 border border-border rounded mt-4">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500/20 text-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.2)]">
+              <Flame className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-mono font-bold text-foreground">Daily Streak</div>
+              <div className="text-[10px] font-mono text-muted-foreground">{summary.streak} {summary.streak === 1 ? 'day' : 'days'} in a row!</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 border-b border-border bg-black/20">
+          <h2 className="text-xs font-mono font-bold tracking-widest text-primary flex items-center gap-2 mb-4">
+            <Award className="w-4 h-4" /> ACHIEVEMENTS
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {BADGES.map((badge, i) => {
+              const unlocked = summary.completed >= badge.threshold;
+              const Icon = badge.icon;
+              return (
+                <div 
+                  key={i}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded border text-[10px] font-mono font-bold tracking-wider transition-all cursor-default
+                    ${unlocked ? `${badge.bg} ${badge.border} ${badge.color}` : 'bg-black/40 border-border text-muted-foreground opacity-40 grayscale'}`}
+                  title={unlocked ? 'Unlocked' : `Unlock at ${badge.threshold} lessons`}
+                >
+                  <Icon className="w-3 h-3" />
+                  {badge.label}
+                </div>
+              );
+            })}
           </div>
         </div>
 

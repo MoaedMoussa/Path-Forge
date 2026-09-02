@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Minus, Play, Plus, RotateCcw, Search, StepForward } from 'lucide-react';
+import { Minus, Play, Plus, RotateCcw, Search, StepForward, FlaskConical } from 'lucide-react';
 import type { CourseId } from '@/data/courseContent';
 import { Button, Input, Label } from './ui';
 
@@ -25,15 +25,120 @@ export function CourseVisualizer({ lessonId }: CourseVisualizerProps) {
       return <LinkedListLab />;
     case 'stacks-queues':
       return <StackQueueLab />;
+    case 'hash-tables':
+      return <HashTableLab />;
     case 'searching':
       return <SearchLab />;
     case 'sorting':
       return <SortingLab />;
+    case 'sliding-window':
+      return <SlidingWindowLab />;
     case 'trees':
       return <TreeLab />;
     case 'graphs':
       return <GraphLab />;
+    default:
+      return <ComingSoonLab lessonId={lessonId} />;
   }
+}
+
+function ComingSoonLab({ lessonId }: { lessonId: string }) {
+  return (
+    <LabFrame title="Lab under construction" detail="This interactive module is currently being built.">
+      <div className="flex flex-col items-center justify-center h-48 text-muted-foreground font-mono text-sm border-2 border-dashed border-border bg-card/20 rounded">
+        <FlaskConical className="w-8 h-8 mb-4 opacity-50" />
+        Interactive simulation for <span className="text-primary mx-1">{lessonId}</span> arriving soon.
+      </div>
+    </LabFrame>
+  );
+}
+
+function HashTableLab() {
+  const [target, setTarget] = useState('apple');
+  const [table, setTable] = useState<Record<number, string[]>>({
+    3: ['orange', 'grape'],
+    7: ['banana']
+  });
+
+  const hash = (str: string) => {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h += str.charCodeAt(i);
+    }
+    return h % 10;
+  };
+
+  const insert = () => {
+    if (!target) return;
+    const h = hash(target);
+    setTable(curr => ({
+      ...curr,
+      [h]: [...(curr[h] || []), target]
+    }));
+    setTarget('');
+  };
+
+  return (
+    <LabFrame title="Hash collisions" detail="Hash strings into a 10-slot table. Watch how different words can produce the same index, requiring chaining.">
+      <div className="flex flex-wrap items-end gap-3 mb-7">
+        <div className="w-48">
+          <Label>String to hash</Label>
+          <Input className="mt-2" value={target} onChange={e => setTarget(e.target.value)} placeholder="Type a word..." />
+        </div>
+        <Button onClick={insert} disabled={!target}><Plus className="mr-2 w-3.5 h-3.5" /> HASH & INSERT</Button>
+        <Button variant="outline" onClick={() => setTable({})}><RotateCcw className="mr-2 w-3.5 h-3.5" /> CLEAR</Button>
+      </div>
+      <div className="grid grid-cols-5 gap-3">
+        {Array.from({length: 10}).map((_, i) => (
+          <div key={i} className="border border-border bg-card p-2 min-h-20 flex flex-col gap-1">
+            <span className="text-[10px] text-muted-foreground border-b border-border/50 pb-1">SLOT {i}</span>
+            {(table[i] || []).map((val, idx) => (
+              <span key={idx} className="text-xs bg-cyan-500/20 text-cyan-200 px-1 py-0.5 rounded truncate">{val}</span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </LabFrame>
+  );
+}
+
+function SlidingWindowLab() {
+  const values = [2, 1, 5, 1, 3, 2];
+  const [k, setK] = useState(3);
+  const [left, setLeft] = useState(0);
+
+  const right = Math.min(left + k - 1, values.length - 1);
+  const currentSum = values.slice(left, right + 1).reduce((a, b) => a + b, 0);
+
+  return (
+    <LabFrame title="Fixed-size sliding window" detail="Move a window of size K across the array to find the sum without recalculating everything.">
+      <div className="flex flex-wrap items-end gap-3 mb-7">
+        <div className="w-32">
+          <Label>Window size (K)</Label>
+          <Input className="mt-2" type="number" min={1} max={values.length} value={k} onChange={e => {
+            setK(Number(e.target.value));
+            setLeft(0);
+          }} />
+        </div>
+        <Button onClick={() => setLeft(c => Math.min(c + 1, values.length - k))} disabled={left >= values.length - k}><StepForward className="mr-2 w-3.5 h-3.5" /> SLIDE RIGHT</Button>
+        <Button variant="outline" onClick={() => setLeft(0)}><RotateCcw className="mr-2 w-3.5 h-3.5" /> RESET</Button>
+      </div>
+      <div className="flex items-end gap-2 overflow-x-auto pb-5">
+        {values.map((val, i) => {
+          const inWindow = i >= left && i <= right;
+          return (
+            <div key={i} className={`min-w-14 h-14 flex flex-col items-center justify-center border transition-all ${inWindow ? accentClasses.violet : 'border-border bg-card text-muted-foreground'}`}>
+              <span className="text-xl font-bold">{val}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 pt-4 border-t border-border grid grid-cols-2 gap-3 text-xs">
+        <Metric label="Current window sum" value={currentSum.toString()} tone="violet" />
+        <Metric label="Window bounds" value={`[${left}] to [${right}]`} />
+      </div>
+    </LabFrame>
+  );
 }
 
 function LabFrame({ title, children, detail }: { title: string; children: React.ReactNode; detail: string }) {

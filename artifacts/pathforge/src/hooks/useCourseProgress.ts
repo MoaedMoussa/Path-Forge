@@ -12,6 +12,12 @@ export interface LessonProgress {
 export type CourseProgress = Partial<Record<CourseId, LessonProgress>>;
 
 const STORAGE_KEY = 'pathforge-academy-progress-v1';
+const STREAK_KEY = 'pathforge-academy-streak-v1';
+
+interface StreakState {
+  current: number;
+  lastActivity: string | null;
+}
 
 function loadProgress(): CourseProgress {
   if (typeof window === 'undefined') return {};
@@ -21,6 +27,37 @@ function loadProgress(): CourseProgress {
     return stored ? JSON.parse(stored) as CourseProgress : {};
   } catch {
     return {};
+  }
+}
+
+function loadAndCalculateStreak(): StreakState {
+  if (typeof window === 'undefined') return { current: 0, lastActivity: null };
+  const today = new Date().toDateString();
+  
+  try {
+    const stored = window.localStorage.getItem(STREAK_KEY);
+    const parsed = stored ? JSON.parse(stored) as StreakState : { current: 0, lastActivity: null };
+    
+    if (!parsed.lastActivity) {
+      return { current: 1, lastActivity: today };
+    }
+    
+    if (parsed.lastActivity === today) {
+      return parsed;
+    }
+    
+    const lastDate = new Date(parsed.lastActivity);
+    const currentDate = new Date(today);
+    const diffTime = currentDate.getTime() - lastDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      return { current: parsed.current + 1, lastActivity: today };
+    } else {
+      return { current: 1, lastActivity: today };
+    }
+  } catch {
+    return { current: 1, lastActivity: today };
   }
 }
 
@@ -36,6 +73,7 @@ function createEntry(existing?: LessonProgress): LessonProgress {
 
 export function useCourseProgress() {
   const [progress, setProgress] = useState<CourseProgress>(() => loadProgress());
+  const [streak, setStreak] = useState<StreakState>(() => loadAndCalculateStreak());
 
   useEffect(() => {
     try {
@@ -44,6 +82,14 @@ export function useCourseProgress() {
       // Progress remains available during this session if localStorage is unavailable.
     }
   }, [progress]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
+    } catch {
+      // Ignore
+    }
+  }, [streak]);
 
   const updateLesson = useCallback((lessonId: CourseId, updater: (current: LessonProgress) => LessonProgress) => {
     setProgress(current => {
@@ -75,10 +121,12 @@ export function useCourseProgress() {
 
   const resetProgress = useCallback(() => {
     setProgress({});
+    setStreak({ current: 1, lastActivity: new Date().toDateString() });
     try {
       window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.setItem(STREAK_KEY, JSON.stringify({ current: 1, lastActivity: new Date().toDateString() }));
     } catch {
-      // A clear session state is still useful when storage is restricted.
+      // Ignore
     }
   }, []);
 
@@ -88,8 +136,9 @@ export function useCourseProgress() {
       quizPassed: entries.filter(entry => entry?.quizPassed).length,
       puzzlesSolved: entries.filter(entry => entry?.puzzleSolved).length,
       completed: entries.filter(entry => entry?.completed).length,
+      streak: streak.current,
     };
-  }, [progress]);
+  }, [progress, streak]);
 
   return { progress, summary, recordQuiz, markPuzzleSolved, resetProgress };
 }
