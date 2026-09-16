@@ -47,3 +47,14 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Platform artifacts
+dev.log
+bun.lock
+.replit
+.replitignore
+attached_assets/
+app/
+firebase-applet-config.json
+firebase-blueprint.json
+metadata.json
