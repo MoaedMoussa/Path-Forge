@@ -16,35 +16,102 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
 import { Clock, Activity, Target, Flag, Check, Edit2, Bell } from 'lucide-react';
+import { COURSE_LESSONS } from '@/data/courseContent';
+import { useMemo } from 'react';
 
-const WEEKLY_DATA = [
-  { day: 'Mon', problems: 2, time: 45 },
-  { day: 'Tue', problems: 5, time: 90 },
-  { day: 'Wed', problems: 3, time: 60 },
-  { day: 'Thu', problems: 8, time: 120 },
-  { day: 'Fri', problems: 4, time: 70 },
-  { day: 'Sat', problems: 1, time: 20 },
-  { day: 'Sun', problems: 6, time: 100 },
-];
 
-const ALGO_TIME_DATA = [
-  { name: 'Arrays', time: 120 },
-  { name: 'Trees', time: 180 },
-  { name: 'Graphs', time: 210 },
-  { name: 'DP', time: 150 },
-  { name: 'Sorting', time: 90 },
-];
 
-const SKILL_DATA = [
-  { subject: 'Data Structures', A: 80, fullMark: 100 },
-  { subject: 'Algorithms', A: 90, fullMark: 100 },
-  { subject: 'System Design', A: 40, fullMark: 100 },
-  { subject: 'Problem Solving', A: 85, fullMark: 100 },
-  { subject: 'Complexity', A: 60, fullMark: 100 },
-];
+
+
+
 
 export function LearningDashboard() {
-  const { summary } = useCourseProgress();
+  const { summary, progress } = useCourseProgress();
+
+  const derivedStats = useMemo(() => {
+    const weeklyMap = new Map();
+    // Initialize last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toDateString();
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      weeklyMap.set(dateKey, { day: dayName, problems: 0, time: 0 });
+    }
+
+    const topicTimeMap = new Map();
+    topicTimeMap.set('Linear Data', 0);
+    topicTimeMap.set('Trees/Graphs', 0);
+    topicTimeMap.set('Algorithms', 0);
+    topicTimeMap.set('System Design', 0);
+    topicTimeMap.set('Advanced', 0);
+
+    const categoryScores = new Map();
+    const allCategories = ['Linear structures', 'Algorithms', 'Trees & graphs', 'Advanced techniques', 'System Design'];
+    
+    for (const cat of allCategories) {
+      categoryScores.set(cat, { earned: 0, max: 0 });
+    }
+
+    let totalEstimatedTime = 0;
+
+    for (const lesson of COURSE_LESSONS) {
+      const prog = progress[lesson.id];
+      
+      const catData = categoryScores.get(lesson.category);
+      if (catData) {
+        catData.max += 3;
+        if (prog) {
+          if (prog.completed) catData.earned += 1;
+          if (prog.quizPassed) catData.earned += 1;
+          if (prog.puzzleSolved) catData.earned += 1;
+        }
+      }
+
+      if (!prog) continue;
+
+      const timeEarned = (prog.completed ? 30 : 0) + (prog.quizPassed ? 15 : 0) + (prog.puzzleSolved ? 15 : 0);
+      const problemsSolved = (prog.quizPassed ? 1 : 0) + (prog.puzzleSolved ? 1 : 0);
+
+      totalEstimatedTime += timeEarned;
+
+      if (lesson.category === 'Linear structures') topicTimeMap.set('Linear Data', topicTimeMap.get('Linear Data') + timeEarned);
+      if (lesson.category === 'Trees & graphs') topicTimeMap.set('Trees/Graphs', topicTimeMap.get('Trees/Graphs') + timeEarned);
+      if (lesson.category === 'Algorithms') topicTimeMap.set('Algorithms', topicTimeMap.get('Algorithms') + timeEarned);
+      if (lesson.category === 'System Design') topicTimeMap.set('System Design', topicTimeMap.get('System Design') + timeEarned);
+      if (lesson.category === 'Advanced techniques') topicTimeMap.set('Advanced', topicTimeMap.get('Advanced') + timeEarned);
+
+      if (prog.lastUpdatedAt) {
+        const updatedDate = new Date(prog.lastUpdatedAt).toDateString();
+        if (weeklyMap.has(updatedDate)) {
+          const d = weeklyMap.get(updatedDate);
+          d.time += timeEarned; 
+          d.problems += problemsSolved;
+        }
+      }
+    }
+
+    const WEEKLY_DATA = Array.from(weeklyMap.values());
+    
+    let ALGO_TIME_DATA = Array.from(topicTimeMap.entries()).map(([name, time]) => ({ name, time })).filter(item => item.time > 0);
+    if (ALGO_TIME_DATA.length === 0) {
+      ALGO_TIME_DATA = [
+        { name: 'Linear Data', time: 0 },
+        { name: 'Algorithms', time: 0 },
+        { name: 'Trees/Graphs', time: 0 }
+      ];
+    }
+
+    const SKILL_DATA = Array.from(categoryScores.entries()).map(([subject, scores]) => ({
+      subject: subject.split(' ')[0],
+      A: scores.max > 0 ? Math.round((scores.earned / scores.max) * 100) : 0,
+      fullMark: 100
+    }));
+
+    return { WEEKLY_DATA, ALGO_TIME_DATA, SKILL_DATA, totalEstimatedTime };
+  }, [progress]);
+
+  const { WEEKLY_DATA, ALGO_TIME_DATA, SKILL_DATA, totalEstimatedTime } = derivedStats;
   const { toast } = useToast();
   const [goal, setGoal] = useState(600); // Default 600 mins
   const [isEditingGoal, setIsEditingGoal] = useState(false);

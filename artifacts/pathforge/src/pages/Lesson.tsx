@@ -10,6 +10,7 @@ import { CourseVisualizer } from '@/components/CourseVisualizer';
 import { COURSE_LESSONS, getCourseLesson } from '@/data/courseContent';
 import { ChallengeMode } from '@/components/ChallengeMode';
 import { LessonCodeEditor } from '@/components/LessonCodeEditor';
+import { ScrollToTop } from '@/components/ScrollToTop';
 import { ActiveLearning } from '@/components/ActiveLearning';
 import { LessonWhiteboard } from '@/components/LessonWhiteboard';
 import { LessonNotes } from '@/components/LessonNotes';
@@ -276,6 +277,7 @@ export default function Lesson() {
           </div>
         )}
       </div>
+      <ScrollToTop />
     </div>
   );
 }

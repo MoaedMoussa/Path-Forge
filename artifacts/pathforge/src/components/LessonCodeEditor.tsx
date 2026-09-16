@@ -7,7 +7,7 @@ import 'prismjs/components/prism-java';
 import 'prismjs/components/prism-c';
 import 'prismjs/components/prism-cpp';
 import 'prismjs/themes/prism-tomorrow.css'; // A dark theme
-import { Play, RotateCcw, Terminal } from 'lucide-react';
+import { Play, RotateCcw, Terminal, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui';
 
 interface LessonCodeEditorProps {
@@ -35,6 +35,7 @@ export function LessonCodeEditor({ initialCode, className = '' }: LessonCodeEdit
   
   const [output, setOutput] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [hasCopied, setHasCopied] = useState(false);
 
   const currentCode = codes[language];
 
@@ -77,6 +78,12 @@ export function LessonCodeEditor({ initialCode, className = '' }: LessonCodeEdit
     }
   };
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(currentCode);
+    setHasCopied(true);
+    setTimeout(() => setHasCopied(false), 2000);
+  };
+
   const handleReset = () => {
     setCodes(prev => ({
       ...prev,
@@ -115,6 +122,10 @@ export function LessonCodeEditor({ initialCode, className = '' }: LessonCodeEdit
         <div className="flex gap-2 self-end sm:self-auto">
           <Button variant="outline" size="sm" onClick={handleReset} className="h-8 text-[10px]">
             <RotateCcw className="w-3 h-3 mr-2" /> RESET
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleCopy} className="h-8 text-[10px]">
+            {hasCopied ? <Check className="w-3 h-3 mr-2 text-green-400" /> : <Copy className="w-3 h-3 mr-2" />} 
+            {hasCopied ? 'COPIED' : 'COPY'}
           </Button>
           <Button size="sm" onClick={executeCode} className="h-8 text-[10px]">
             <Play className="w-3 h-3 mr-2" /> RUN

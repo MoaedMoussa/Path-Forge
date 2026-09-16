@@ -1,10 +1,15 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { Activity, Cpu, ChevronRight } from 'lucide-react';
-import { getCourseLesson } from '@/data/courseContent';
+import { getCourseLesson, COURSE_LESSONS } from '@/data/courseContent';
+import { useCourseProgress } from '@/hooks/useCourseProgress';
+import { Progress } from '@/components/ui/progress';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { summary } = useCourseProgress();
+  const totalLessons = COURSE_LESSONS.length;
+  const progressPercentage = totalLessons > 0 ? (summary.completed / totalLessons) * 100 : 0;
   const pathParts = location.split('/').filter(Boolean);
 
   return (
@@ -48,8 +53,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           </nav>
         </div>
-        <div className="hidden items-center gap-4 text-muted-foreground font-mono text-xs sm:flex">
-          <span className="flex items-center gap-2"><Activity className="w-4 h-4 text-green-500" /> STATUS: ONLINE</span>
+        <div className="hidden items-center gap-6 text-muted-foreground font-mono text-xs md:flex">
+          <Link href="/courses" className="flex items-center gap-3 hover:text-white transition-colors group">
+            <span className="text-[10px] tracking-widest uppercase">PROGRESS: {summary.completed}/{totalLessons}</span>
+            <Progress value={progressPercentage} className="w-24 h-1.5 transition-all group-hover:bg-primary/30" />
+          </Link>
+          <div className="h-3 w-px bg-border"></div>
+          <span className="flex items-center gap-2"><Activity className="w-4 h-4 text-green-500" /> ONLINE</span>
         </div>
       </header>
       

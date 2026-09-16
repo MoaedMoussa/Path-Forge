@@ -74,5 +74,26 @@
     "wouter": "^3.3.5",
     "zod": "^3.25.76"
   },
-  "author": "Moussa"
+  "author": "Moussa",
+  "keywords": [
+    "react",
+    "algorithms",
+    "pathfinding",
+    "visualizer",
+    "education",
+    "computer-science",
+    "vite",
+    "typescript",
+    "dijkstra",
+    "a-star",
+    "graph-theory"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoaedMoussa/Path-Forge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MoaedMoussa/Path-Forge/issues"
+  },
+  "homepage": "https://github.com/MoaedMoussa/Path-Forge#readme"
 }

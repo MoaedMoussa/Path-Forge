@@ -7,6 +7,7 @@ import { ArrowRight, BookOpenCheck, ChevronRight, CircleDot, Code2, FlaskConical
 import { Badge, Button, Card } from '@/components/ui';
 import { COURSE_CATEGORIES, COURSE_CATEGORY_ICONS, COURSE_LESSONS } from '@/data/courseContent';
 import { ProgressTracker } from '@/components/ProgressTracker';
+import { ScrollToTop } from '@/components/ScrollToTop';
 import { LearningDashboard } from '@/components/LearningDashboard';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
 
@@ -158,8 +159,9 @@ export default function Courses() {
                     const lessonId = lesson.id as keyof typeof progress;
                     const isCompleted = progress[lessonId]?.completed;
                     return (
-                      <Link key={lesson.id} href={`/courses/${lesson.id}`} className="group">
-                        <Card className={`h-full p-5 transition-all duration-200 hover:-translate-y-1 ${accentStyles[lesson.accent]} relative`}>
+                      <Link key={lesson.id} href={`/courses/${lesson.id}`} className="group block h-full">
+                        <motion.div whileHover={{ y: -5, scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} className="h-full">
+                          <Card className={`h-full p-5 transition-colors duration-200 ${accentStyles[lesson.accent]} relative`}>
                           {isCompleted && (
                             <div className="absolute top-0 right-0 m-4 w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400">
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -175,7 +177,8 @@ export default function Courses() {
                             <span className="text-[10px] font-mono text-current/90">{lesson.complexity.split(' · ')[0]}</span>
                             <ChevronRight className="w-4 h-4 text-current" />
                           </div>
-                        </Card>
+                          </Card>
+                        </motion.div>
                       </Link>
                     );
                   })}
@@ -196,6 +199,7 @@ export default function Courses() {
           <Link href="/lab"><Button variant="outline">ENTER ALGORITHM LAB <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
         </section>
       </div>
+      <ScrollToTop />
     </div>
   );
 }
