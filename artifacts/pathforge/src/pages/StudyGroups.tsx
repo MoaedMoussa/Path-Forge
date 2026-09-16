@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useMetaDescription } from '@/hooks/useMetaDescription';
 import React, { useState, useEffect } from 'react';
@@ -223,8 +224,22 @@ export default function StudyGroups() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center p-12 text-muted-foreground font-mono animate-pulse">
-            LOADING YOUR ROOMS...
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="border border-border/50 bg-card/20 rounded-lg p-5 flex flex-col h-32 gap-3">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-3/4 bg-primary/20" />
+                    <Skeleton className="h-3 w-1/3 bg-primary/10" />
+                  </div>
+                  <Skeleton className="h-6 w-12 bg-black/50" />
+                </div>
+                <div className="mt-auto flex justify-between items-center">
+                  <Skeleton className="h-3 w-16 bg-muted/20" />
+                  <Skeleton className="h-8 w-16 bg-primary/20" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : rooms.length === 0 ? (
           <div className="border border-dashed border-border/50 rounded-lg p-12 text-center bg-black/20">

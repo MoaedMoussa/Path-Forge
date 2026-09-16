@@ -191,5 +191,5 @@ export function useCourseProgress() {
     };
   }, [progress, streak]);
 
-  return { progress, summary, recordQuiz, markPuzzleSolved, resetProgress };
+  return { progress, summary, recordQuiz, markPuzzleSolved, resetProgress, isLoading: !isLoaded };
 }

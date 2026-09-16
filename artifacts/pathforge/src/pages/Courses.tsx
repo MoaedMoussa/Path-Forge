@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useMetaDescription } from '@/hooks/useMetaDescription';
 import { Link } from 'wouter';
@@ -20,7 +21,7 @@ export default function Courses() {
   usePageTitle('Courses');
   useMetaDescription('Browse the PathForge Academy curriculum. Learn Data Structures, Graph Theory, and Pathfinding Algorithms.');
 
-  const { progress } = useCourseProgress();
+  const { progress, isLoading } = useCourseProgress();
   const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
   const dailyChallenge = COURSE_LESSONS[daysSinceEpoch % COURSE_LESSONS.length];
 
@@ -53,7 +54,16 @@ export default function Courses() {
 
         <ProgressTracker />
         <div className="mb-12 mt-8">
-          <LearningDashboard />
+          {isLoading ? (
+            <div className="border border-border/50 bg-card/20 p-6 md:p-8 flex flex-col gap-6">
+              <Skeleton className="h-8 w-48 bg-primary/20" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 w-full bg-primary/10" />)}
+              </div>
+            </div>
+          ) : (
+            <LearningDashboard />
+          )}
         </div>
 
         
@@ -127,6 +137,23 @@ export default function Courses() {
                 </div>
                 <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {lessons.map((lesson, index) => {
+                    if (isLoading) {
+                      return (
+                        <div key={lesson.id} className="border border-border/50 bg-card/20 rounded-lg p-5 flex flex-col h-[220px]">
+                          <div className="flex justify-between items-start mb-5">
+                            <Skeleton className="w-10 h-10 bg-primary/20" />
+                            <Skeleton className="w-8 h-4 bg-primary/10" />
+                          </div>
+                          <Skeleton className="h-6 w-3/4 bg-primary/20 mb-3" />
+                          <Skeleton className="h-4 w-full bg-primary/10 mb-2" />
+                          <Skeleton className="h-4 w-2/3 bg-primary/10" />
+                          <div className="mt-auto pt-4 border-t border-border/20 flex justify-between">
+                            <Skeleton className="h-3 w-16 bg-muted/20" />
+                            <Skeleton className="h-4 w-4 bg-muted/20" />
+                          </div>
+                        </div>
+                      );
+                    }
                     const Icon = lesson.icon;
                     const lessonId = lesson.id as keyof typeof progress;
                     const isCompleted = progress[lessonId]?.completed;
