@@ -1,16 +1,24 @@
+import { usePageTitle } from '@/hooks/usePageTitle';
+import { useMetaDescription } from '@/hooks/useMetaDescription';
 import { useEffect, useState, useRef } from 'react';
 import { useEngine } from '../hooks/useEngine';
 import { CanvasRenderer } from '../components/CanvasRenderer';
+import { VideoSidebar } from '../components/VideoSidebar';
 import { Button, Input, Label, Card, Badge } from '../components/ui';
 import { AppState, LevelInputAlgorithm, PATHFINDING_ALGORITHMS, PathfindingAlgorithm } from '../engine';
 import { useCreateLevel } from '@workspace/api-client-react';
-import { Play, Pause, Square, FastForward, RotateCcw, Share2, Layers, Cpu, Compass, BookOpenCheck, Award, Star, Medal, Trophy, Flame } from 'lucide-react';
+import { Play, Pause, Square, FastForward, RotateCcw, Share2, Layers, Cpu, Compass, BookOpenCheck, Award, Star, Medal, Trophy, Flame, Target, CheckCircle2, Circle, Globe, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
+import { useDailyMissions } from '@/hooks/useDailyMissions';
+import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { COURSE_LESSONS } from '@/data/courseContent';
 import { Progress } from '@/components/ui/progress';
 
 export default function Home() {
+  usePageTitle('Pathfinding Lab');
+  useMetaDescription('Experiment with graph algorithms in the Pathfinding Lab. Create walls, set weights, and watch A*, Dijkstra, BFS, and DFS in action.');
+
   const engine = useEngine();
   const [algo, setAlgo] = useState<LevelInputAlgorithm>(LevelInputAlgorithm.bsp);
   const [width, setWidth] = useState(60);
@@ -18,15 +26,20 @@ export default function Home() {
   const [seed, setSeed] = useState(42);
   const [pathAlgo, setPathAlgo] = useState<PathfindingAlgorithm>('astar');
   const [speed, setSpeed] = useState(1);
+  const [paintMode, setPaintMode] = useState<'wall' | 'floor' | 'start' | 'goal'>('wall');
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState<{ url: string, ownerToken: string } | null>(null);
   
   const { toast } = useToast();
   const createLevel = useCreateLevel();
   const { summary } = useCourseProgress();
+  const { missions, incrementMission } = useDailyMissions();
   const totalCourses = COURSE_LESSONS.length;
   const progressPercent = Math.round((summary.completed / totalCourses) * 100) || 0;
 
+  const { leaderboard, currentUserProfile, currentXP, registerUser, isAuthReady } = useLeaderboard();
+  const [registerName, setRegisterName] = useState('');
+  
   const BADGES = [
     { threshold: 1, label: 'STARTER', icon: Star, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/30' },
     { threshold: 5, label: 'SCHOLAR', icon: Medal, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/30' },
@@ -55,17 +68,20 @@ export default function Home() {
 
   const handleGenerate = () => {
     engine.actions.generate(algo, width, height, seed, {});
+    incrementMission('random_grid');
   };
 
   const handleFindPath = () => {
     engine.actions.findPath(pathAlgo);
+    incrementMission('run_algo');
   };
 
   const handleSave = () => {
     if (!engine.grid) return;
+    incrementMission('share_level');
     createLevel.mutate({
       data: {
-        algorithm: algo,
+        algorithm: algo as any,
         config: {},
         gridData: engine.grid.serialize(),
         width,
@@ -103,6 +119,9 @@ export default function Home() {
                   { id: 'bsp', label: 'BSP Rooms' },
                   { id: 'cellular_automata', label: 'Caves (CA)' },
                   { id: 'maze', label: 'Maze (DFS)' },
+                  { id: 'recursive_division', label: 'Recursive Division' },
+                  { id: 'random_noise', label: 'Random Noise' },
+                  { id: 'empty', label: 'Empty Sandbox' },
                 ].map(a => (
                   <label key={a.id} className="flex items-center gap-2 text-sm font-mono cursor-pointer p-2 rounded border border-border bg-black/30 hover:bg-muted transition-colors">
                     <input 
@@ -209,6 +228,38 @@ export default function Home() {
 
         <div className="p-4 border-b border-border bg-black/20">
           <h2 className="text-xs font-mono font-bold tracking-widest text-primary flex items-center gap-2 mb-4">
+            <Target className="w-4 h-4" /> DAILY MISSIONS
+          </h2>
+          <div className="space-y-3">
+            {missions.map(mission => (
+              <div key={mission.id} className={`p-3 rounded border ${mission.completed ? 'bg-primary/10 border-primary/30' : 'bg-black/40 border-border'}`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2 text-sm font-mono">
+                    {mission.completed ? (
+                      <CheckCircle2 className="w-4 h-4 text-primary" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <span className={mission.completed ? 'text-foreground' : 'text-muted-foreground'}>{mission.title}</span>
+                  </div>
+                  <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${mission.completed ? 'text-primary border-primary/30' : 'text-muted-foreground'}`}>
+                    {mission.reward}
+                  </Badge>
+                </div>
+                <div className="pl-6">
+                  <div className="flex justify-between text-[10px] font-mono text-muted-foreground mb-1.5">
+                    <span>Progress</span>
+                    <span>{mission.progress} / {mission.target}</span>
+                  </div>
+                  <Progress value={Math.round((mission.progress / mission.target) * 100)} className="h-1.5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 border-b border-border bg-black/20">
+          <h2 className="text-xs font-mono font-bold tracking-widest text-primary flex items-center gap-2 mb-4">
             <Award className="w-4 h-4" /> ACHIEVEMENTS
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -230,6 +281,62 @@ export default function Home() {
           </div>
         </div>
 
+        <div className="p-4 border-b border-border bg-black/20">
+          <h2 className="text-xs font-mono font-bold tracking-widest text-primary flex items-center gap-2 mb-4">
+            <Globe className="w-4 h-4" /> GLOBAL LEADERBOARD
+          </h2>
+          <div className="space-y-2">
+            {!isAuthReady ? (
+              <div className="text-xs font-mono text-muted-foreground text-center py-4">Connecting...</div>
+            ) : !currentUserProfile ? (
+              <div className="bg-black/40 border border-border p-3 rounded space-y-3">
+                <div className="text-xs font-mono text-muted-foreground">Join the leaderboard to rank up!</div>
+                <div className="flex gap-2">
+                  <Input 
+                    value={registerName}
+                    onChange={e => setRegisterName(e.target.value.replace(/[^a-zA-Z0-9 _\-]/g, ''))}
+                    placeholder="Enter your name"
+                    className="h-8 text-xs font-mono"
+                    maxLength={20}
+                  />
+                  <Button 
+                    size="sm" 
+                    className="h-8 text-xs font-mono px-3 shrink-0"
+                    disabled={registerName.trim().length === 0}
+                    onClick={() => {
+                      registerUser(registerName.trim()).catch(err => {
+                        toast({ title: "Registration failed", description: err.message || "Could not register", variant: "destructive" });
+                      });
+                    }}
+                  >
+                    LOGIN & JOIN
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            
+            {leaderboard.map((user, i) => {
+              const isMe = currentUserProfile?.userId === user.userId;
+              return (
+                <div key={user.id} className={`flex items-center gap-3 px-3 py-2 rounded border ${isMe ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-black/40 border-border text-muted-foreground'}`}>
+                  <div className="font-mono font-bold w-4 text-center">{i + 1}</div>
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center bg-card border text-[9px] ${isMe ? 'border-primary/50' : 'border-border'}`}>
+                      <User className="w-3 h-3" />
+                    </div>
+                    <span className="font-mono text-sm truncate">{user.name}</span>
+                  </div>
+                  <div className="font-mono text-xs font-bold">{user.xp} XP</div>
+                </div>
+              );
+            })}
+            
+            {leaderboard.length === 0 && isAuthReady && currentUserProfile && (
+              <div className="text-xs font-mono text-muted-foreground text-center py-4">No entries yet.</div>
+            )}
+          </div>
+        </div>
+
         <div className="p-4 bg-black/40 space-y-2">
           <Button variant="outline" className="w-full flex gap-2" onClick={handleSave} disabled={!engine.grid || createLevel.isPending}>
             <Share2 className="w-4 h-4" /> SAVE & SHARE
@@ -247,41 +354,63 @@ export default function Home() {
             agentPos={engine.agentPos}
             activeSearchCell={engine.activeSearchCell}
             animState={engine.appState}
-            onCellClick={(x, y) => engine.actions.dropObstacle(x, y)}
+            onCellClick={(x, y) => {
+              if (engine.appState === AppState.Ready || engine.appState === AppState.Animating) {
+                 engine.actions.paintCell(x, y, paintMode === 'wall' ? 0 : paintMode === 'floor' ? 1 : paintMode === 'start' ? 2 : 3);
+              }
+            }}
+            onCellDrag={(x, y) => {
+              if (engine.appState === AppState.Ready || engine.appState === AppState.Animating) {
+                 engine.actions.paintCell(x, y, paintMode === 'wall' ? 0 : paintMode === 'floor' ? 1 : paintMode === 'start' ? 2 : 3);
+              }
+            }}
           />
 
-          <div className="absolute top-10 left-10 pointer-events-none z-10 font-mono">
-            <div className="inline-flex items-center gap-2 rounded border border-primary/30 bg-black/80 px-3 py-2 shadow-lg backdrop-blur">
-              <span className={`h-2 w-2 rounded-full ${
-                engine.animationProgress.phase === 'searching'
-                  ? 'bg-cyan-400 animate-pulse'
-                  : engine.animationProgress.phase === 'tracing'
-                    ? 'bg-amber-400 animate-pulse'
-                    : engine.animationProgress.phase === 'complete'
-                      ? 'bg-green-400'
-                      : 'bg-muted-foreground'
-              }`} />
-              <span className="text-[10px] tracking-widest text-muted-foreground">
-                {engine.animationProgress.phase === 'searching'
-                  ? 'LIVE SEARCH'
-                  : engine.animationProgress.phase === 'tracing'
-                    ? 'TRACING ROUTE'
-                    : engine.animationProgress.phase === 'complete'
-                      ? 'ROUTE COMPLETE'
-                      : 'READY'}
-              </span>
-              {engine.animationProgress.total > 0 && (
-                <>
-                  <span className="h-3 w-px bg-border" />
-                  <span className="text-xs font-bold text-white tabular-nums">
-                    {engine.animationProgress.current}/{engine.animationProgress.total}
-                  </span>
-                </>
-              )}
+          {/* Canvas UI Overlays */}
+          <div className="absolute top-4 left-4 right-4 z-10 font-mono flex flex-col-reverse md:flex-row items-start md:items-start justify-between gap-4 pointer-events-none">
+            
+            {/* Status Panel */}
+            <div>
+              <div className="inline-flex items-center gap-2 rounded border border-primary/30 bg-black/80 px-3 py-2 shadow-lg backdrop-blur pointer-events-auto">
+                <span className={`h-2 w-2 rounded-full ${
+                  engine.animationProgress.phase === 'searching'
+                    ? 'bg-cyan-400 animate-pulse'
+                    : engine.animationProgress.phase === 'tracing'
+                      ? 'bg-amber-400 animate-pulse'
+                      : engine.animationProgress.phase === 'complete'
+                        ? 'bg-green-400'
+                        : 'bg-muted-foreground'
+                }`} />
+                <span className="text-[10px] tracking-widest text-muted-foreground">
+                  {engine.animationProgress.phase === 'searching'
+                    ? 'LIVE SEARCH'
+                    : engine.animationProgress.phase === 'tracing'
+                      ? 'TRACING ROUTE'
+                      : engine.animationProgress.phase === 'complete'
+                        ? 'ROUTE COMPLETE'
+                        : 'READY'}
+                </span>
+                {engine.animationProgress.total > 0 && (
+                  <>
+                    <span className="h-3 w-px bg-border" />
+                    <span className="text-xs font-bold text-white tabular-nums">
+                      {engine.animationProgress.current}/{engine.animationProgress.total}
+                    </span>
+                  </>
+                )}
+              </div>
+              <p className="mt-2 text-[10px] text-muted-foreground/80 tracking-wide drop-shadow-md pointer-events-none">
+                {engine.appState === AppState.Animating ? 'Cyan cursor = frontier currently expanding' : 'Click a floor tile to inject an obstacle'}
+              </p>
             </div>
-            <p className="mt-2 text-[10px] text-muted-foreground/80 tracking-wide">
-              {engine.appState === AppState.Animating ? 'Cyan cursor = frontier currently expanding' : 'Click a floor tile to inject an obstacle'}
-            </p>
+
+            {/* Paint Controls */}
+            <div className="flex flex-wrap gap-2 pointer-events-auto self-end md:self-start">
+               <Button size="sm" variant={paintMode === 'wall' ? 'default' : 'outline'} className="h-8 text-[10px] bg-black/80" onClick={() => setPaintMode('wall')}>WALL</Button>
+               <Button size="sm" variant={paintMode === 'floor' ? 'default' : 'outline'} className="h-8 text-[10px] bg-black/80" onClick={() => setPaintMode('floor')}>ERASE</Button>
+               <Button size="sm" variant={paintMode === 'start' ? 'default' : 'outline'} className="h-8 text-[10px] bg-black/80 text-green-400" onClick={() => setPaintMode('start')}>START</Button>
+               <Button size="sm" variant={paintMode === 'goal' ? 'default' : 'outline'} className="h-8 text-[10px] bg-black/80 text-amber-400" onClick={() => setPaintMode('goal')}>GOAL</Button>
+            </div>
           </div>
           
           {/* Compare Overlay */}
@@ -375,6 +504,8 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <VideoSidebar algorithm={pathAlgo} />
 
       {/* SHARE MODAL */}
       {showShareModal && (

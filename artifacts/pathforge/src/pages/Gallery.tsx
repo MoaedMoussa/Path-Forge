@@ -1,16 +1,26 @@
+import { usePageTitle } from '@/hooks/usePageTitle';
+import { useMetaDescription } from '@/hooks/useMetaDescription';
 import { useState } from 'react';
 import { useListLevels, useGetLevelStats } from '@workspace/api-client-react';
 import { Link } from 'wouter';
 import { Card, Button, Badge } from '../components/ui';
 import { Layers, Eye, Calendar, Database, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
+import { MiniGrid } from '../components/MiniGrid';
+import { useCourseProgress } from '../hooks/useCourseProgress';
+import { Lock, Unlock } from 'lucide-react';
 
 export default function Gallery() {
+  usePageTitle('Level Gallery');
+  useMetaDescription('Explore community-created pathfinding puzzles and mazes in the Level Gallery.');
+
   const [page, setPage] = useState(1);
   const limit = 12;
   
   const { data: listData, isLoading } = useListLevels({ page, limit });
   const { data: stats } = useGetLevelStats();
+  const { summary } = useCourseProgress();
+  const isPremiumUnlocked = summary.quizPassed >= 2;
 
   return (
     <div className="flex-1 flex flex-col bg-background overflow-y-auto">
@@ -44,6 +54,40 @@ export default function Gallery() {
           )}
         </div>
 
+
+        {/* PREMIUM ARCHIVE */}
+        <div className="border border-border bg-black/40 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            {isPremiumUnlocked ? <Unlock className="w-5 h-5 text-amber-400" /> : <Lock className="w-5 h-5 text-muted-foreground" />}
+            <h2 className="text-xl font-mono text-white tracking-widest">PREMIUM ARCHIVE</h2>
+          </div>
+          {isPremiumUnlocked ? (
+            <div className="bg-amber-400/10 border border-amber-400/30 p-4 font-mono text-sm text-amber-200">
+              [ ACCESS GRANTED: EXCLUSIVE GENERATION MODELS ]
+              <p className="mt-2 text-muted-foreground text-xs">You have certified enough modules to unlock experimental algorithms.</p>
+              <div className="mt-4 flex gap-4">
+                <Card className="bg-black/80 border-amber-400/30 p-4 flex-1">
+                  <h3 className="text-amber-400 mb-2">FRACTAL LABYRINTH</h3>
+                  <p className="text-[10px] text-muted-foreground">Self-similar chaotic corridors.</p>
+                </Card>
+                <Card className="bg-black/80 border-amber-400/30 p-4 flex-1">
+                  <h3 className="text-amber-400 mb-2">QUANTUM BSP</h3>
+                  <p className="text-[10px] text-muted-foreground">Non-Euclidean spatial partitioning.</p>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-black/60 border border-border/50 p-6 text-center font-mono">
+              <Lock className="w-8 h-8 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground text-sm">ACCESS RESTRICTED</p>
+              <p className="text-xs text-muted-foreground/60 mt-2">Achieve a perfect score on at least 2 challenges to unlock.</p>
+              <div className="mt-4 text-[10px] text-amber-400/80 bg-amber-400/5 py-1 px-3 inline-block rounded">
+                CURRENT PROGRESS: {summary.quizPassed} / 2
+              </div>
+            </div>
+          )}
+        </div>
+
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
@@ -54,7 +98,12 @@ export default function Gallery() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {listData?.levels.map(level => (
-                <Card key={level.id} className="bg-card hover:bg-card/80 transition-colors border-border group overflow-hidden flex flex-col">
+                
+                <Card key={level.id} className="bg-card hover:border-primary/50 transition-colors border-border group overflow-hidden flex flex-col relative">
+                  <div className="h-32 w-full bg-black/80 border-b border-border/50 p-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <MiniGrid gridData={level.gridData} width={level.width} height={level.height} className="w-full h-full object-contain mx-auto max-w-[200px]" />
+                  </div>
+
                   <div className="p-5 flex-1">
                     <div className="flex justify-between items-start mb-4">
                       <Badge variant="outline" className="text-[10px] text-primary border-primary/30 bg-primary/5 uppercase">

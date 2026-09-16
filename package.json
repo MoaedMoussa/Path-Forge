@@ -1,6 +1,6 @@
 {
-  "name": "workspace",
-  "version": "0.0.0",
+  "name": "pathforge-academy",
+  "version": "1.0.0",
   "license": "MIT",
   "scripts": {
     "build": "npm run typecheck && npm run build --workspaces --if-present",
@@ -10,9 +10,21 @@
   },
   "private": true,
   "dependencies": {
-    "@replit/connectors-sdk": "^0.4.1"
+    "@google/genai": "^2.21.0",
+    "@replit/connectors-sdk": "^0.4.1",
+    "d3": "^7.9.0",
+    "drizzle-zod": "^0.8.3",
+    "firebase": "^12.18.0",
+    "framer-motion": "^13.2.0",
+    "prismjs": "^1.30.0",
+    "react-firebase-hooks": "^5.1.1",
+    "react-markdown": "^10.1.0",
+    "react-simple-code-editor": "^0.14.1",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/prismjs": "^1.26.6",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
   },
@@ -22,5 +34,7 @@
   "workspaces": [
     "artifacts/*",
     "lib/*"
-  ]
+  ],
+  "description": "Interactive computer science and algorithms learning platform.",
+  "author": "Moussa"
 }

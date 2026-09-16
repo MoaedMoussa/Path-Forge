@@ -110,6 +110,7 @@ router.get("/levels", async (req, res): Promise<void> => {
         width: levelsTable.width,
         height: levelsTable.height,
         seed: levelsTable.seed,
+        gridData: levelsTable.gridData,
         viewCount: levelsTable.viewCount,
         createdAt: levelsTable.createdAt,
       })

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Grid, Cell, CellType, 
-  generateBSP, generateCellularAutomata, generateMaze, 
+import {
+  Grid, Cell, CellType,
+  generateBSP, generateCellularAutomata, generateMaze,
+  generateEmpty, generateRandomNoise, generateRecursiveDivision,
   PATHFINDING_ALGORITHMS, PathfindingAlgorithm, runPathfinder,
   AppState, AgentStateMachine, PathfinderResult,
 } from '../engine';
-import { RNG } from '../engine/grid/seededRandom';
 
 export interface UseEngineResult {
   grid: Grid | null;
@@ -35,6 +35,8 @@ export interface UseEngineResult {
     reset: () => void;
     setSpeed: (mult: number) => void;
     dropObstacle: (x: number, y: number) => void;
+    paintCell: (x: number, y: number, type: CellType) => void;
+    toggleWall: (x: number, y: number, forceType?: CellType) => void;
     compareAll: () => void;
     loadLevel: (gridData: number[], width: number, height: number) => void;
   }
@@ -57,102 +59,46 @@ export function useEngine(): UseEngineResult {
   
   const [stats, setStats] = useState({ nodesExplored: 0, pathLength: 0, timeMs: 0 });
   const [comparison, setComparison] = useState<Record<string, PathfinderResult> | null>(null);
-
-  const [speed, setSpeed] = useState(1);
+  
   const [currentAlgo, setCurrentAlgo] = useState<PathfindingAlgorithm>('astar');
-
-  // Animation refs
+  
+  const speedMult = useRef(1);
   const animFrame = useRef<number | undefined>(undefined);
-  const animState = useRef<{
-    visited: Cell[];
-    path: Cell[];
-    visitedIdx: number;
-    pathIdx: number;
-    lastTime: number;
-  }>({ visited: [], path: [], visitedIdx: 0, pathIdx: 0, lastTime: 0 });
+  const animState = useRef({
+    visited: [] as Cell[],
+    path: [] as Cell[],
+    visitedIdx: 0,
+    pathIdx: 0,
+    lastTime: 0,
+  });
 
   useEffect(() => {
-    const unsub = fsm.subscribe(setAppState);
-    return unsub;
+    return fsm.subscribe(setAppState);
   }, [fsm]);
 
-  // Animation Loop
-  const animate = useCallback((time: number) => {
-    if (fsm.state !== AppState.Animating) return;
-
-    const dt = time - animState.current.lastTime;
-    const frameDelay = 1000 / (60 * speed); // 60 updates per sec base
-
-    if (dt > frameDelay) {
-      animState.current.lastTime = time;
-      
-      const s = animState.current;
-      
-      // Animate frontier expansion
-      if (s.visitedIdx < s.visited.length) {
-        // do multiple per frame if high speed
-        const steps = Math.max(1, Math.floor(speed));
-        const newSet = new Set(exploredCells);
-        let currentCell: Cell | null = null;
-        for (let i = 0; i < steps && s.visitedIdx < s.visited.length; i++) {
-          const c = s.visited[s.visitedIdx++];
-          newSet.add(`${c.x},${c.y}`);
-          currentCell = c;
+  const loadLevel = useCallback((gridData: number[], width: number, height: number) => {
+    fsm.transition(AppState.Generating);
+    setTimeout(() => {
+      try {
+        const g = new Grid(width, height, CellType.FLOOR);
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            g.cells[y][x].type = gridData[y * width + x] as CellType;
+            if (g.cells[y][x].type === CellType.START) setAgentPos(g.cells[y][x]);
+          }
         }
-        setExploredCells(newSet);
-        setActiveSearchCell(currentCell);
-        setStats(prev => ({ ...prev, nodesExplored: s.visitedIdx }));
-        setAnimationProgress({
-          phase: 'searching',
-          current: s.visitedIdx,
-          total: s.visited.length,
-        });
-      } 
-      // Then animate path reveal & agent walk
-      else if (s.pathIdx < s.path.length) {
-        const steps = Math.max(1, Math.floor(speed / 2));
-        let nextPath = [...pathCells];
-        let nextAgent = agentPos;
-        for (let i = 0; i < steps && s.pathIdx < s.path.length; i++) {
-          const c = s.path[s.pathIdx++];
-          nextPath.push(c);
-          nextAgent = c;
-        }
-        setPathCells(nextPath);
-        setAgentPos(nextAgent);
+        setGrid(g);
+        setExploredCells(new Set());
+        setPathCells([]);
         setActiveSearchCell(null);
-        setStats(prev => ({ ...prev, pathLength: s.pathIdx }));
-        setAnimationProgress({
-          phase: 'tracing',
-          current: s.pathIdx,
-          total: s.path.length,
-        });
-      }
-      // Done animating
-      else {
-        setActiveSearchCell(null);
-        setAnimationProgress({
-          phase: 'complete',
-          current: s.path.length,
-          total: s.path.length,
-        });
+        setAnimationProgress({ phase: 'idle', current: 0, total: 0 });
         fsm.transition(AppState.Ready);
-        return;
+      } catch (e) {
+        console.error(e);
+        fsm.transition(AppState.Error);
       }
-    }
-    
-    animFrame.current = requestAnimationFrame(animate);
-  }, [fsm, speed, exploredCells, pathCells, agentPos]);
-
-  useEffect(() => {
-    if (appState === AppState.Animating) {
-      animState.current.lastTime = performance.now();
-      animFrame.current = requestAnimationFrame(animate);
-    }
-    return () => {
-      if (animFrame.current) cancelAnimationFrame(animFrame.current);
-    }
-  }, [appState, animate]);
+    }, 10);
+  }, [fsm]);
 
   const generate = (algo: string, width: number, height: number, seed: number, config: any) => {
     fsm.transition(AppState.Generating);
@@ -168,9 +114,11 @@ export function useEngine(): UseEngineResult {
         let g: Grid;
         if (algo === 'bsp') g = generateBSP(width, height, seed, config.minRoomSize || 6);
         else if (algo === 'cellular_automata') g = generateCellularAutomata(width, height, seed, config.fillProbability || 0.45);
-        else g = generateMaze(width, height, seed);
+        else if (algo === 'maze') g = generateMaze(width, height, seed);
+        else if (algo === 'recursive_division') g = generateRecursiveDivision(width, height, seed);
+        else if (algo === 'random_noise') g = generateRandomNoise(width, height, seed);
+        else g = generateEmpty(width, height, seed);
         
-        // Pick start and goal
         const floors = [];
         for (let y = 0; y < g.height; y++) {
           for (let x = 0; x < g.width; x++) {
@@ -180,14 +128,13 @@ export function useEngine(): UseEngineResult {
         
         if (floors.length < 2) throw new Error("Not enough floor cells");
         
-        const rng = new RNG(seed + 1);
-        const startCell = floors[rng.range(0, floors.length)];
-        let goalCell = floors[rng.range(0, floors.length)];
-        while(goalCell === startCell) goalCell = floors[rng.range(0, floors.length)];
+        const start = floors[0];
+        const goal = floors[floors.length - 1];
         
-        g.setCell(startCell.x, startCell.y, CellType.START);
-        g.setCell(goalCell.x, goalCell.y, CellType.GOAL);
+        g.setCell(start.x, start.y, CellType.START);
+        g.setCell(goal.x, goal.y, CellType.GOAL);
         
+        setAgentPos(start);
         setGrid(g);
         fsm.transition(AppState.Ready);
       } catch (e) {
@@ -197,21 +144,9 @@ export function useEngine(): UseEngineResult {
     }, 10);
   };
 
-  const loadLevel = (gridData: number[], width: number, height: number) => {
-    fsm.transition(AppState.Generating);
-    const g = Grid.deserialize(width, height, gridData);
-    setGrid(g);
-    setExploredCells(new Set());
-    setPathCells([]);
-    setAgentPos(null);
-    setActiveSearchCell(null);
-    setAnimationProgress({ phase: 'idle', current: 0, total: 0 });
-    setComparison(null);
-    fsm.transition(AppState.Ready);
-  };
-
   const findPath = (algo: PathfindingAlgorithm) => {
-    if (!grid) return;
+    if (!grid || appState !== AppState.Ready) return;
+    
     fsm.transition(AppState.Pathfinding);
     setCurrentAlgo(algo);
     
@@ -224,31 +159,30 @@ export function useEngine(): UseEngineResult {
         }
       }
       
-      if (!start || !goal) {
-        fsm.transition(AppState.Ready);
-        return;
-      }
+      if (!start || !goal) return fsm.transition(AppState.Ready);
       
       const res = runPathfinder(algo, grid, start, goal);
       
       setExploredCells(new Set());
       setPathCells([]);
-      setAgentPos(start);
       setActiveSearchCell(null);
-      setStats({ nodesExplored: 0, pathLength: 0, timeMs: res.executionTimeMs });
-      setAnimationProgress({
-        phase: res.visitedOrder.length > 0 ? 'searching' : 'tracing',
-        current: 0,
-        total: res.visitedOrder.length || res.path.length,
-      });
+      setComparison(null);
       
       animState.current = {
         visited: res.visitedOrder,
         path: res.path,
         visitedIdx: 0,
         pathIdx: 0,
-        lastTime: performance.now()
+        lastTime: performance.now(),
       };
+      
+      setStats({ nodesExplored: 0, pathLength: 0, timeMs: res.executionTimeMs });
+      
+      setAnimationProgress({
+        phase: res.visitedOrder.length > 0 ? 'searching' : 'tracing',
+        current: 0,
+        total: res.visitedOrder.length || res.path.length,
+      });
       
       fsm.transition(AppState.Animating);
     }, 10);
@@ -266,56 +200,43 @@ export function useEngine(): UseEngineResult {
           if (grid.cells[y][x].type === CellType.GOAL) goal = grid.cells[y][x];
         }
       }
+      
       if (!start || !goal) return fsm.transition(AppState.Ready);
       
       const results = Object.fromEntries(
         PATHFINDING_ALGORITHMS.map(definition => [
           definition.id,
-          runPathfinder(definition.id, grid, start, goal),
+          runPathfinder(definition.id, grid, start!, goal!),
         ]),
       ) as Record<string, PathfinderResult>;
-
+      
       setComparison(results);
       fsm.transition(AppState.Ready);
     }, 10);
-  }
+  };
 
-  const dropObstacle = (x: number, y: number) => {
-    if (!grid || !agentPos) return;
-    if (appState !== AppState.Animating && appState !== AppState.Ready) return;
-    
-    const cell = grid.getCell(x, y);
-    if (!cell || cell.type !== CellType.FLOOR) return;
-    
-    // Drop obstacle
-    grid.setCell(x, y, CellType.OBSTACLE);
-    
-    // Need to trigger re-render of grid
-    setGrid(grid.clone());
-    
-    // Replan if we are animating and it's on our path or we want to find a new path
+  const triggerReplan = () => {
     if (appState === AppState.Animating || appState === AppState.Ready) {
-      fsm.transition(AppState.Replanning);
+      if (appState === AppState.Animating) {
+         fsm.transition(AppState.Replanning);
+      }
       
-      // The agent's current position becomes the new start
-      let goal: Cell | undefined;
-      for (let cy = 0; cy < grid.height; cy++) {
-        for (let cx = 0; cx < grid.width; cx++) {
-          if (grid.cells[cy][cx].type === CellType.GOAL) goal = grid.cells[cy][cx];
-          if (grid.cells[cy][cx].type === CellType.START && grid.cells[cy][cx] !== agentPos) {
-            // Unset old start
-            grid.setCell(cx, cy, CellType.FLOOR);
-          }
+      let goal;
+      let start;
+      for (let cy = 0; cy < grid!.height; cy++) {
+        for (let cx = 0; cx < grid!.width; cx++) {
+          if (grid!.cells[cy][cx].type === CellType.GOAL) goal = grid!.cells[cy][cx];
+          if (grid!.cells[cy][cx].type === CellType.START) start = grid!.cells[cy][cx];
         }
       }
       
-      if (goal) {
-        grid.setCell(agentPos.x, agentPos.y, CellType.START);
+      if (start) {
+        setAgentPos(start);
+      }
+      
+      if (goal && start && appState === AppState.Animating) {
+        const res = runPathfinder(currentAlgo, grid!, start, goal);
         
-        const res = runPathfinder(currentAlgo, grid, agentPos, goal);
-        
-        // Reset only future path, keep explored cells to show the history of where it searched?
-        // Let's clear explored cells so it's a fresh search from new position
         setExploredCells(new Set());
         setPathCells([]);
         setActiveSearchCell(null);
@@ -331,37 +252,108 @@ export function useEngine(): UseEngineResult {
           path: res.path,
           visitedIdx: 0,
           pathIdx: 0,
-          lastTime: performance.now()
+          lastTime: performance.now(),
         };
         
-        fsm.transition(AppState.Animating);
+        if (animState.current.path.length > 0) {
+          fsm.transition(AppState.Animating);
+        } else {
+          fsm.transition(AppState.Ready);
+        }
       }
     }
   };
 
-  const play = () => {
-    if (appState !== AppState.Ready || animState.current.path.length === 0) return;
+  const paintCell = (x: number, y: number, type: CellType) => {
+    if (!grid) return;
+    if (appState !== AppState.Animating && appState !== AppState.Ready) return;
+    
+    if (type === CellType.START || type === CellType.GOAL) {
+      for (let cy = 0; cy < grid.height; cy++) {
+        for (let cx = 0; cx < grid.width; cx++) {
+          if (grid.cells[cy][cx].type === type) {
+            grid.setCell(cx, cy, CellType.FLOOR);
+          }
+        }
+      }
+    }
+    
+    grid.setCell(x, y, type);
+    setGrid(grid.clone());
+    triggerReplan();
+  };
 
-    const s = animState.current;
-    const animationComplete = s.visitedIdx >= s.visited.length && s.pathIdx >= s.path.length;
-    if (animationComplete) {
-      s.visitedIdx = 0;
-      s.pathIdx = 0;
-      s.lastTime = performance.now();
-      setExploredCells(new Set());
-      setPathCells([]);
-      setAgentPos(s.path[0] ?? null);
-      setActiveSearchCell(null);
-      setStats(prev => ({ ...prev, nodesExplored: 0, pathLength: 0 }));
-      setAnimationProgress({
-        phase: s.visited.length > 0 ? 'searching' : 'tracing',
-        current: 0,
-        total: s.visited.length || s.path.length,
-      });
+  const toggleWall = (x: number, y: number, forceType?: CellType) => {
+    if (!grid) return;
+    if (appState !== AppState.Animating && appState !== AppState.Ready) return;
+    
+    const cell = grid.getCell(x, y);
+    if (!cell || cell.type === CellType.START || cell.type === CellType.GOAL) return;
+    
+    if (forceType !== undefined) {
+      grid.setCell(x, y, forceType);
+    } else {
+      grid.setCell(x, y, cell.type === CellType.WALL ? CellType.FLOOR : CellType.WALL);
+    }
+    
+    setGrid(grid.clone());
+    triggerReplan();
+  };
+  
+  const dropObstacle = toggleWall;
+
+  useEffect(() => {
+    const step = (time: number) => {
+      if (appState !== AppState.Animating) return;
+      
+      const s = animState.current;
+      const delay = Math.max(1, 15 / speedMult.current);
+      
+      if (time - s.lastTime > delay) {
+        if (s.visitedIdx < s.visited.length) {
+          const toProcess = Math.max(1, Math.floor(speedMult.current));
+          for (let i = 0; i < toProcess && s.visitedIdx < s.visited.length; i++) {
+            const cell = s.visited[s.visitedIdx++];
+            setExploredCells(prev => new Set(prev).add(`${cell.x},${cell.y}`));
+            setActiveSearchCell(cell);
+            setStats(prev => ({ ...prev, nodesExplored: s.visitedIdx }));
+            setAnimationProgress(prev => ({ ...prev, phase: 'searching', current: s.visitedIdx }));
+          }
+        } else if (s.pathIdx < s.path.length) {
+          setActiveSearchCell(null);
+          const cell = s.path[s.pathIdx++];
+          setPathCells(prev => [...prev, cell]);
+          setAgentPos(cell);
+          setStats(prev => ({ ...prev, pathLength: s.pathIdx }));
+          setAnimationProgress(prev => ({ ...prev, phase: 'tracing', current: s.pathIdx, total: s.path.length }));
+        } else {
+          fsm.transition(AppState.Ready);
+          setAnimationProgress(prev => ({ ...prev, phase: 'complete' }));
+        }
+        s.lastTime = time;
+      }
+      animFrame.current = requestAnimationFrame(step);
+    };
+
+    if (appState === AppState.Animating) {
+      animState.current.lastTime = performance.now();
+      animFrame.current = requestAnimationFrame(step);
     }
 
-    if (animState.current.path.length > 0) {
-      fsm.transition(AppState.Animating);
+    return () => {
+      if (animFrame.current) cancelAnimationFrame(animFrame.current);
+    };
+  }, [appState, fsm]);
+
+  const setSpeed = (mult: number) => {
+    speedMult.current = mult;
+  };
+
+  const play = () => {
+    if (appState === AppState.Ready) {
+      if (animState.current.path.length > 0) {
+        fsm.transition(AppState.Animating);
+      }
     }
   }
 
@@ -393,6 +385,6 @@ export function useEngine(): UseEngineResult {
 
   return {
     grid, appState, exploredCells, pathCells, agentPos, activeSearchCell, animationProgress, stats, comparison,
-    actions: { generate, findPath, play, pause, reset, setSpeed, dropObstacle, compareAll, loadLevel }
+    actions: { generate, findPath, play, pause, reset, setSpeed, dropObstacle, toggleWall, paintCell, compareAll, loadLevel }
   }
 }

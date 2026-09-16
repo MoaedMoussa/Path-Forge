@@ -1,9 +1,12 @@
+import { usePageTitle } from '@/hooks/usePageTitle';
+import { useMetaDescription } from '@/hooks/useMetaDescription';
 import { useEffect } from 'react';
 import { useRoute, Link, useLocation } from 'wouter';
 import { useGetLevel, useDeleteLevel, getGetLevelQueryKey } from '@workspace/api-client-react';
 import { useEngine } from '../hooks/useEngine';
 import { CanvasRenderer } from '../components/CanvasRenderer';
 import { Button, Card } from '../components/ui';
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Play, RotateCcw, Share2, Compass, Layers, Trash2 } from 'lucide-react';
 import { AppState } from '../engine';
 import { useToast } from '@/hooks/use-toast';
@@ -14,10 +17,13 @@ export default function Level() {
   const slug = params?.slug;
   const engine = useEngine();
   const { toast } = useToast();
-  
+
   const { data: level, isLoading, error } = useGetLevel(slug || '', {
     query: { enabled: !!slug, queryKey: getGetLevelQueryKey(slug || '') }
   });
+
+  usePageTitle(level ? `Level: ${level.algorithm}` : 'Shared Level');
+  useMetaDescription(level ? `Watch ${level.algorithm} solve this custom maze in the PathForge Lab.` : 'Shared PathForge Level');
   
   const deleteLevel = useDeleteLevel();
 
@@ -68,7 +74,19 @@ export default function Level() {
       {/* Banner */}
       <div className="h-12 border-b border-border bg-card/80 flex items-center justify-between px-6 shrink-0 z-10">
         <div className="flex items-center gap-4 text-sm font-mono">
-          <span className="text-primary font-bold">SHARED LEVEL</span>
+          <Breadcrumb>
+            <BreadcrumbList className="gap-2 sm:gap-2">
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/gallery" className="text-muted-foreground font-bold hover:text-primary transition-colors">GALLERY</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-primary font-bold">SHARED LEVEL</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <span className="text-muted-foreground border-l border-border pl-4">{level.algorithm.toUpperCase()}</span>
           <span className="text-muted-foreground border-l border-border pl-4">{level.width} × {level.height}</span>
           <span className="text-muted-foreground border-l border-border pl-4">SEED: {level.seed}</span>

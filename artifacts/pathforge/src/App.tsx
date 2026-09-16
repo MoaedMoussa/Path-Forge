@@ -12,6 +12,10 @@ import Gallery from './pages/Gallery';
 import Courses from './pages/Courses';
 import Lesson from './pages/Lesson';
 
+import StudyGroups from './pages/StudyGroups';
+import StudyRoom from './pages/StudyRoom';
+import StudyDeck from './pages/StudyDeck';
+
 const queryClient = new QueryClient();
 
 function Router() {
@@ -24,6 +28,9 @@ function Router() {
         <Route path="/gallery" component={Gallery} />
         <Route path="/courses" component={Courses} />
         <Route path="/courses/:id" component={Lesson} />
+        <Route path="/study-groups" component={StudyGroups} />
+        <Route path="/study-groups/:roomId" component={StudyRoom} />
+        <Route path="/flashcards" component={StudyDeck} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

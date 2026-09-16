@@ -1,4 +1,7 @@
+import { usePageTitle } from '@/hooks/usePageTitle';
+import { useMetaDescription } from '@/hooks/useMetaDescription';
 import { Link } from 'wouter';
+import { motion } from 'framer-motion';
 import {
   ArrowRight,
   BookOpenCheck,
@@ -9,8 +12,13 @@ import {
   Layers3,
   Network,
   Terminal,
+  Flame,
+  Calendar
 } from 'lucide-react';
 import { Badge, Button, Card } from '@/components/ui';
+import { COURSE_LESSONS } from '@/data/courseContent';
+
+import { LearningPath } from '@/components/LearningPath';
 
 const destinations = [
   {
@@ -28,7 +36,7 @@ const destinations = [
     eyebrow: '02 / BUILD CONTEXT',
     title: 'PathForge Academy',
     description: 'Make data structures click through visual lessons, interactive labs, quizzes, and practice puzzles.',
-    detail: '7 MODULES · VISUAL LEARNING',
+    detail: `${COURSE_LESSONS.length}+ MODULES · ANIMATIONS & VIDEOS`,
     href: '/courses',
     icon: BookOpenCheck,
     accent: 'violet',
@@ -70,6 +78,12 @@ const accentClasses = {
 };
 
 export default function Landing() {
+  usePageTitle('Welcome');
+  useMetaDescription('Master Data Structures, AI, and System Design with PathForge Academy. An interactive curriculum for learning and visualizing algorithms.');
+
+  const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  const dailyChallenge = COURSE_LESSONS[daysSinceEpoch % COURSE_LESSONS.length];
+
   return (
     <div className="flex-1 overflow-y-auto bg-background">
       <div className="relative isolate overflow-hidden">
@@ -86,14 +100,24 @@ export default function Landing() {
                 </span>
                 <span className="text-muted-foreground">LEARNING OS / 01</span>
               </div>
-              <h1 className="mt-7 max-w-4xl font-mono text-4xl font-bold leading-[1.02] tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
-                Find your way through
-                <span className="block text-primary">computer science.</span>
-              </h1>
-              <p className="mt-6 max-w-xl font-mono text-sm leading-7 text-muted-foreground sm:text-base">
-                PathForge is a hands-on space for turning algorithms into something you can see, run, and explain.
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
+                className="mt-7 max-w-4xl font-mono text-4xl font-bold leading-[1.02] tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl"
+              >
+                Master algorithms, systems, &
+                <span className="block text-primary">AI architecture.</span>
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
+                className="mt-6 max-w-xl font-mono text-sm leading-7 text-muted-foreground sm:text-base"
+              >
+                PathForge is a comprehensive learning OS covering Data Structures, Microservices, and Machine Learning with rich interactive modules, code runners, and 3D animations.
                 Start with a route, a lesson, or a world built by the community.
-              </p>
+              </motion.p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link href="/lab">
                   <Button size="lg">
@@ -129,6 +153,32 @@ export default function Landing() {
             </div>
           </section>
 
+          <section className="mt-16 border border-amber-500/30 bg-amber-500/5 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden group">
+            <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,transparent_25%,rgba(251,191,36,1)_25%,rgba(251,191,36,1)_50%,transparent_50%,transparent_75%,rgba(251,191,36,1)_75%,rgba(251,191,36,1)_100%)] bg-[length:20px_20px]" />
+            <div className="relative flex items-start gap-5">
+              <div className="w-12 h-12 shrink-0 border border-amber-500/50 bg-amber-500/20 flex items-center justify-center">
+                <Flame className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-[10px] tracking-[0.24em] text-amber-400">DAILY CHALLENGE</p>
+                  <Badge variant="outline" className="text-[9px] border-amber-500/30 text-amber-400 rounded-none bg-amber-500/10">TODAY</Badge>
+                </div>
+                <h2 className="mt-2 font-mono text-xl font-bold text-white tracking-tight">{dailyChallenge.title}</h2>
+                <p className="mt-2 max-w-2xl text-xs font-mono leading-5 text-amber-100/70">{dailyChallenge.interviewPrompt}</p>
+              </div>
+            </div>
+            <Link href={`/courses/${dailyChallenge.id}`} className="relative shrink-0">
+              <Button className="bg-amber-500 text-black hover:bg-amber-400 font-mono tracking-widest text-[10px] px-6">
+                PRACTICE NOW <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </section>
+
+          <section className="mt-16">
+            <LearningPath />
+          </section>
+
           <section className="mt-16">
             <div className="mb-5 flex items-end justify-between gap-4">
               <div>
@@ -136,7 +186,7 @@ export default function Landing() {
                 <h2 className="mt-2 font-mono text-xl text-white sm:text-2xl">Where do you want to start?</h2>
               </div>
               <Badge variant="outline" className="hidden font-mono text-[9px] text-muted-foreground sm:inline-flex">
-                03 PATHS AVAILABLE
+                {String(destinations.length).padStart(2, '0')} PATHS AVAILABLE
               </Badge>
             </div>
 

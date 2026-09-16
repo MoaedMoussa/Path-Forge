@@ -1,0 +1,8 @@
+# PathForge Academy
+
+PathForge Academy is an interactive computer science and algorithms learning platform. It provides interactive visualizations for pathfinding algorithms like A*, Dijkstra, BFS, and DFS.
+
+## Sections
+- Courses: Interactive modules covering graph theory and pathfinding.
+- Lab: A visual sandbox for testing pathfinding on custom grids.
+- Study Groups: Real-time collaborative coding and whiteboard sessions.

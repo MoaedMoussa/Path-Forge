@@ -9,9 +9,11 @@ interface CanvasRendererProps {
   activeSearchCell?: Cell | null;
   animState?: string;
   onCellClick?: (x: number, y: number) => void;
+  onCellDrag?: (x: number, y: number) => void;
 }
 
-export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, activeSearchCell, animState, onCellClick }: CanvasRendererProps) {
+export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, activeSearchCell, animState, onCellClick, onCellDrag }: CanvasRendererProps) {
+  const [isDragging, setIsDragging] = React.useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -31,6 +33,11 @@ export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, activ
 
     // Draw frame
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const exploredArray = Array.from(exploredCells);
+    const exploredMap = new Map();
+    exploredArray.forEach((key, index) => exploredMap.set(key, index));
+    const totalExplored = exploredArray.length;
 
     for (let y = 0; y < grid.height; y++) {
       for (let x = 0; x < grid.width; x++) {
@@ -57,8 +64,12 @@ export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, activ
         }
 
         // Draw explored overlay
-        if (exploredCells.has(`${x},${y}`) && cell.type !== CellType.START && cell.type !== CellType.GOAL) {
-          ctx.fillStyle = 'rgba(79, 70, 229, 0.4)'; // Indigo tint
+        if (exploredMap.has(`${x},${y}`) && cell.type !== CellType.START && cell.type !== CellType.GOAL) {
+          const exploreIndex = exploredMap.get(`${x},${y}`);
+          const ratio = totalExplored > 1 ? exploreIndex / (totalExplored - 1) : 1;
+          // Gradient from Deep Purple to Cyan
+          const hue = 260 - (ratio * 80); 
+          ctx.fillStyle = `hsla(${hue}, 80%, 60%, 0.5)`;
           ctx.fillRect(px, py, cellSize, cellSize);
         }
 
@@ -107,6 +118,39 @@ export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, activ
 
   }, [grid, exploredCells, pathCells, agentPos, activeSearchCell]); // Re-render when these change
 
+  const getCellFromEvent = (e: React.MouseEvent<HTMLCanvasElement> | React.PointerEvent<HTMLCanvasElement>) => {
+    if (!grid || !canvasRef.current) return null;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const cellSize = canvas.width / grid.width;
+    const cx = Math.floor(x / cellSize);
+    const cy = Math.floor(y / cellSize);
+    if (cx >= 0 && cx < grid.width && cy >= 0 && cy < grid.height) {
+      return { cx, cy };
+    }
+    return null;
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+    const cell = getCellFromEvent(e);
+    if (cell && onCellClick) onCellClick(cell.cx, cell.cy);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
+    const cell = getCellFromEvent(e);
+    if (cell && onCellDrag) onCellDrag(cell.cx, cell.cy);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    setIsDragging(false);
+  };
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!grid || !onCellClick) return;
     const canvas = canvasRef.current;
@@ -130,7 +174,9 @@ export function CanvasRenderer({ grid, exploredCells, pathCells, agentPos, activ
       {grid ? (
         <canvas
           ref={canvasRef}
-          onClick={handleCanvasClick}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
           className="cursor-crosshair"
           style={{ imageRendering: 'pixelated' }}
         />

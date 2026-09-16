@@ -3,10 +3,11 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
-const port = Number(process.env.PORT) || 3000;
+const port = 3000;
 const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
+
   base: basePath,
   plugins: [
     react(),
@@ -41,6 +42,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-firebase': ['firebase/app', 'firebase/firestore', 'firebase/auth'],
+          'vendor-ui': ['lucide-react', 'framer-motion', 'recharts', 'prismjs'],
+        }
+      }
+    }
   },
   server: {
     port,

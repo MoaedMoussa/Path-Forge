@@ -1,7 +1,13 @@
+import { usePageTitle } from '@/hooks/usePageTitle';
+import { useMetaDescription } from '@/hooks/useMetaDescription';
 import { Link } from 'wouter';
-import { ArrowRight, BookOpenCheck, ChevronRight, CircleDot, Code2, FlaskConical, PlayCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, BookOpenCheck, ChevronRight, CircleDot, Code2, FlaskConical, PlayCircle, CheckCircle2, Flame, BrainCircuit } from 'lucide-react';
 import { Badge, Button, Card } from '@/components/ui';
 import { COURSE_CATEGORIES, COURSE_CATEGORY_ICONS, COURSE_LESSONS } from '@/data/courseContent';
+import { ProgressTracker } from '@/components/ProgressTracker';
+import { LearningDashboard } from '@/components/LearningDashboard';
+import { useCourseProgress } from '@/hooks/useCourseProgress';
 
 const accentStyles = {
   cyan: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300 group-hover:border-cyan-400/80',
@@ -11,6 +17,13 @@ const accentStyles = {
 };
 
 export default function Courses() {
+  usePageTitle('Courses');
+  useMetaDescription('Browse the PathForge Academy curriculum. Learn Data Structures, Graph Theory, and Pathfinding Algorithms.');
+
+  const { progress } = useCourseProgress();
+  const daysSinceEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  const dailyChallenge = COURSE_LESSONS[daysSinceEpoch % COURSE_LESSONS.length];
+
   return (
     <div className="flex-1 overflow-y-auto bg-background">
       <div className="max-w-7xl mx-auto px-6 py-10 lg:px-10">
@@ -21,10 +34,10 @@ export default function Courses() {
               <FlaskConical className="w-4 h-4" /> PATHFORGE ACADEMY
             </div>
             <h1 className="mt-5 text-4xl md:text-6xl font-mono font-bold tracking-tight text-white leading-[1.03]">
-              Learn the structures that make algorithms work.
+              Master Data Structures, AI, and System Design.
             </h1>
             <p className="mt-6 max-w-2xl font-mono text-sm leading-7 text-muted-foreground">
-              A hands-on course companion for turning data-structure theory into something you can see, test, and explain in a technical interview.
+              A comprehensive, interactive curriculum for turning abstract computer science theories into concrete skills you can see, test, and explain in technical interviews.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/courses/arrays"><Button size="lg"><PlayCircle className="w-4 h-4 mr-2" /> START LEARNING</Button></Link>
@@ -37,6 +50,58 @@ export default function Courses() {
             <Summary value="1" label="Algorithm playground" />
           </div>
         </section>
+
+        <ProgressTracker />
+        <div className="mb-12 mt-8">
+          <LearningDashboard />
+        </div>
+
+        
+        <div className="grid md:grid-cols-2 gap-6 mb-10">
+          <section className="border border-amber-500/30 bg-amber-500/5 p-6 md:p-8 flex flex-col justify-between gap-6 relative overflow-hidden group">
+            <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,transparent_25%,rgba(251,191,36,1)_25%,rgba(251,191,36,1)_50%,transparent_50%,transparent_75%,rgba(251,191,36,1)_75%,rgba(251,191,36,1)_100%)] bg-[length:20px_20px]" />
+            <div className="relative flex items-start gap-5">
+              <div className="w-12 h-12 shrink-0 border border-amber-500/50 bg-amber-500/20 flex items-center justify-center">
+                <Flame className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-[10px] tracking-[0.24em] text-amber-400">DAILY CHALLENGE</p>
+                  <Badge variant="outline" className="text-[9px] border-amber-500/30 text-amber-400 rounded-none bg-amber-500/10">TODAY</Badge>
+                </div>
+                <h2 className="mt-2 font-mono text-xl font-bold text-white tracking-tight">{dailyChallenge.title}</h2>
+                <p className="mt-2 max-w-sm text-xs font-mono leading-5 text-amber-100/70">{dailyChallenge.interviewPrompt}</p>
+              </div>
+            </div>
+            <Link href={`/courses/${dailyChallenge.id}`} className="relative self-start">
+              <Button className="bg-amber-500 text-black hover:bg-amber-400 font-mono tracking-widest text-[10px] px-6">
+                PRACTICE NOW <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </section>
+
+          <section className="border border-violet-500/30 bg-violet-500/5 p-6 md:p-8 flex flex-col justify-between gap-6 relative overflow-hidden group">
+            <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,1)_0%,transparent_70%)]" />
+            <div className="relative flex items-start gap-5">
+              <div className="w-12 h-12 shrink-0 border border-violet-500/50 bg-violet-500/20 flex items-center justify-center">
+                <BrainCircuit className="w-6 h-6 text-violet-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-[10px] tracking-[0.24em] text-violet-400">SPACED REPETITION</p>
+                </div>
+                <h2 className="mt-2 font-mono text-xl font-bold text-white tracking-tight">Study Deck</h2>
+                <p className="mt-2 max-w-sm text-xs font-mono leading-5 text-violet-100/70">Master CS concepts using evidence-based flashcards and an intelligent repetition algorithm.</p>
+              </div>
+            </div>
+            <Link href="/flashcards" className="relative self-start">
+              <Button className="bg-violet-500 text-white hover:bg-violet-400 font-mono tracking-widest text-[10px] px-6">
+                REVIEW CARDS <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </section>
+        </div>
+
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-8">
           <div>
@@ -63,12 +128,19 @@ export default function Courses() {
                 <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {lessons.map((lesson, index) => {
                     const Icon = lesson.icon;
+                    const lessonId = lesson.id as keyof typeof progress;
+                    const isCompleted = progress[lessonId]?.completed;
                     return (
                       <Link key={lesson.id} href={`/courses/${lesson.id}`} className="group">
-                        <Card className={`h-full p-5 transition-all duration-200 hover:-translate-y-1 ${accentStyles[lesson.accent]}`}>
+                        <Card className={`h-full p-5 transition-all duration-200 hover:-translate-y-1 ${accentStyles[lesson.accent]} relative`}>
+                          {isCompleted && (
+                            <div className="absolute top-0 right-0 m-4 w-6 h-6 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </div>
+                          )}
                           <div className="flex justify-between items-start gap-4">
                             <div className="w-10 h-10 border border-current/40 flex items-center justify-center"><Icon className="w-5 h-5" /></div>
-                            <Badge variant="outline" className="text-[9px] border-current/30 text-current">0{index + 1}</Badge>
+                            {!isCompleted && <Badge variant="outline" className="text-[9px] border-current/30 text-current">0{index + 1}</Badge>}
                           </div>
                           <h4 className="mt-5 text-xl text-white font-mono leading-tight">{lesson.title}</h4>
                           <p className="mt-3 min-h-12 text-xs leading-5 font-mono text-muted-foreground">{lesson.description}</p>

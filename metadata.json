@@ -1,0 +1,6 @@
+{
+  "name": "PathForge - Algorithm Lab",
+  "description": "An interactive educational platform to visualize, compare, and learn about pathfinding algorithms and procedural generation techniques in real-time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CourseId } from '@/data/courseContent';
+import { CourseId } from '@/data/courseContent';
+import { auth, db, handleFirestoreError, OperationType } from '@/lib/firebase';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export interface LessonProgress {
   bestQuizScore: number;
@@ -19,9 +22,8 @@ interface StreakState {
   lastActivity: string | null;
 }
 
-function loadProgress(): CourseProgress {
+function loadProgressLocal(): CourseProgress {
   if (typeof window === 'undefined') return {};
-
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) as CourseProgress : {};
@@ -30,10 +32,9 @@ function loadProgress(): CourseProgress {
   }
 }
 
-function loadAndCalculateStreak(): StreakState {
+function loadAndCalculateStreakLocal(): StreakState {
   if (typeof window === 'undefined') return { current: 0, lastActivity: null };
   const today = new Date().toDateString();
-  
   try {
     const stored = window.localStorage.getItem(STREAK_KEY);
     const parsed = stored ? JSON.parse(stored) as StreakState : { current: 0, lastActivity: null };
@@ -41,11 +42,9 @@ function loadAndCalculateStreak(): StreakState {
     if (!parsed.lastActivity) {
       return { current: 1, lastActivity: today };
     }
-    
     if (parsed.lastActivity === today) {
       return parsed;
     }
-    
     const lastDate = new Date(parsed.lastActivity);
     const currentDate = new Date(today);
     const diffTime = currentDate.getTime() - lastDate.getTime();
@@ -72,24 +71,82 @@ function createEntry(existing?: LessonProgress): LessonProgress {
 }
 
 export function useCourseProgress() {
-  const [progress, setProgress] = useState<CourseProgress>(() => loadProgress());
-  const [streak, setStreak] = useState<StreakState>(() => loadAndCalculateStreak());
+  const [progress, setProgress] = useState<CourseProgress>(loadProgressLocal());
+  const [streak, setStreak] = useState<StreakState>(loadAndCalculateStreakLocal());
+  const [user, setUser] = useState(auth.currentUser);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return unsubscribe;
+  }, []);
+
+  // Load from Firestore when user logs in
+  useEffect(() => {
+    if (!user) {
+      setIsLoaded(true);
+      return;
+    }
+    
+    const docRef = doc(db, 'courseProgress', user.uid);
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.progress) setProgress(data.progress);
+        
+        if (data.streak) {
+          // Calculate streak logic based on fetched data
+          const today = new Date().toDateString();
+          const parsed = data.streak as StreakState;
+          if (!parsed.lastActivity || parsed.lastActivity === today) {
+             setStreak(parsed.lastActivity ? parsed : { current: 1, lastActivity: today });
+          } else {
+             const diffDays = Math.round((new Date(today).getTime() - new Date(parsed.lastActivity).getTime()) / (1000 * 60 * 60 * 24));
+             if (diffDays === 1) {
+                setStreak({ current: parsed.current + 1, lastActivity: today });
+             } else {
+                setStreak({ current: 1, lastActivity: today });
+             }
+          }
+        }
+      } else {
+        // If they just logged in and have local progress, save it to cloud
+        const localProgress = loadProgressLocal();
+        const localStreak = loadAndCalculateStreakLocal();
+        if (Object.keys(localProgress).length > 0) {
+          setDoc(docRef, {
+            progress: localProgress,
+            streak: localStreak,
+            updatedAt: serverTimestamp()
+          }).catch(err => handleFirestoreError(err, OperationType.READ, 'progress/' + user.uid));
+        }
+      }
+      setIsLoaded(true);
+    }, (error) => {
+      console.warn("Course progress listener:", error.message);
+      setIsLoaded(true);
+    });
+    
+    return unsubscribe;
+  }, [user]);
+
+  // Sync to local and cloud whenever it changes
+  useEffect(() => {
+    if (!isLoaded) return;
+    
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-    } catch {
-      // Progress remains available during this session if localStorage is unavailable.
-    }
-  }, [progress]);
-
-  useEffect(() => {
-    try {
       window.localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
-    } catch {
-      // Ignore
+    } catch {}
+
+    if (user) {
+      setDoc(doc(db, 'courseProgress', user.uid), {
+        progress,
+        streak,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(err => handleFirestoreError(err, OperationType.UPDATE, 'progress/' + auth.currentUser?.uid));
     }
-  }, [streak]);
+  }, [progress, streak, user, isLoaded]);
 
   const updateLesson = useCallback((lessonId: CourseId, updater: (current: LessonProgress) => LessonProgress) => {
     setProgress(current => {
@@ -122,12 +179,6 @@ export function useCourseProgress() {
   const resetProgress = useCallback(() => {
     setProgress({});
     setStreak({ current: 1, lastActivity: new Date().toDateString() });
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-      window.localStorage.setItem(STREAK_KEY, JSON.stringify({ current: 1, lastActivity: new Date().toDateString() }));
-    } catch {
-      // Ignore
-    }
   }, []);
 
   const summary = useMemo(() => {

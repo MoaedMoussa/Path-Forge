@@ -17,4 +17,8 @@ export enum LevelInputAlgorithm {
   bsp = 'bsp',
   cellular_automata = 'cellular_automata',
   maze = 'maze',
+  recursive_division = 'recursive_division',
+  empty = 'empty',
+  random_noise = 'random_noise',
 }
+export * from './generators/extraGenerators';

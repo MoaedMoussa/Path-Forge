@@ -1,0 +1,8 @@
+
+> workspace@0.0.0 dev
+> npm run dev --workspace=@workspace/api-server
+
+
+> @workspace/api-server@0.0.0 dev
+> export NODE_ENV=development && tsx src/index.ts
+
