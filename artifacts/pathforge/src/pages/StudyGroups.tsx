@@ -3,7 +3,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import { useMetaDescription } from '@/hooks/useMetaDescription';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
-import { db, auth, googleAuthProvider, handleFirestoreError, OperationType } from '@/lib/firebase';
+import { db, auth, googleAuthProvider, handleFirestoreError, OperationType, getAuthErrorMessage } from '@/lib/firebase';
 import { collection, query, onSnapshot, serverTimestamp, where, getDocs, limit, doc, setDoc, getDoc, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import { Button, Input } from '@/components/ui';
@@ -29,6 +29,8 @@ export default function StudyGroups() {
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -67,10 +69,15 @@ export default function StudyGroups() {
   }, [user]);
 
   const handleLogin = async () => {
+    setLoginError(null);
+    setIsSigningIn(true);
     try {
       await signInWithPopup(auth, googleAuthProvider);
     } catch (error) {
       console.error("Login failed:", error);
+      setLoginError(getAuthErrorMessage(error));
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -140,8 +147,9 @@ export default function StudyGroups() {
         <p className="text-muted-foreground font-mono max-w-md text-center mb-8">
           Join collaborative virtual rooms to discuss problems, share progress, and pair-program in real-time.
         </p>
-        <Button onClick={handleLogin} size="lg" className="font-mono tracking-widest gap-3">
-          <LogIn className="w-4 h-4" /> AUTHENTICATE TO JOIN
+        {loginError && <div role="alert" className="max-w-lg mb-4 rounded border border-red-500/40 bg-red-500/10 p-3 text-left text-sm text-red-200">{loginError}</div>}
+        <Button onClick={handleLogin} disabled={isSigningIn} size="lg" className="font-mono tracking-widest gap-3">
+          <LogIn className="w-4 h-4" /> {isSigningIn ? 'CONNECTING...' : 'AUTHENTICATE TO JOIN'}
         </Button>
       </div>
     );
