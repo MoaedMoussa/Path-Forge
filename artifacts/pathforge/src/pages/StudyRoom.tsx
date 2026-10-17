@@ -2,7 +2,7 @@ import { usePageTitle } from '@/hooks/usePageTitle';
 import { useMetaDescription } from '@/hooks/useMetaDescription';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, Link, useLocation } from 'wouter';
-import { db, auth, googleAuthProvider, OperationType, handleFirestoreError } from '@/lib/firebase';
+import { db, auth, googleAuthProvider, OperationType, handleFirestoreError, getAuthErrorMessage } from '@/lib/firebase';
 import { doc, onSnapshot, collection, query, orderBy, addDoc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 import { ArrowLeft, Send, Users, Code2, Terminal, Play, LogIn, Link as LinkIcon, Check, Trophy, Pin, PinOff, Image as ImageIcon, X, SmilePlus, Bot, Video, ExternalLink } from 'lucide-react';
@@ -42,6 +42,8 @@ export default function StudyRoom() {
   const [language, setLanguage] = useState<Language>('javascript');
   const [output, setOutput] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const [activeTab, setActiveTab] = useState<string>('chat');
   const [sessionLog, setSessionLog] = useState<{ id: string, message: string, time: Date }[]>([]);
@@ -207,10 +209,15 @@ export default function StudyRoom() {
   }, [roomId, user]);
 
   const handleLogin = async () => {
+    setLoginError(null);
+    setIsSigningIn(true);
     try {
       await signInWithPopup(auth, googleAuthProvider);
     } catch (error) {
       console.error("Login failed:", error);
+      setLoginError(getAuthErrorMessage(error));
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -392,8 +399,9 @@ export default function StudyRoom() {
         <p className="text-muted-foreground font-mono max-w-md text-center mb-8">
           You need to be authenticated to join this collaborative study room.
         </p>
-        <Button onClick={handleLogin} size="lg" className="font-mono tracking-widest gap-3">
-          <LogIn className="w-4 h-4" /> SIGN IN TO JOIN
+        {loginError && <div role="alert" className="max-w-lg mb-4 rounded border border-red-500/40 bg-red-500/10 p-3 text-left text-sm text-red-200">{loginError}</div>}
+        <Button onClick={handleLogin} disabled={isSigningIn} size="lg" className="font-mono tracking-widest gap-3">
+          <LogIn className="w-4 h-4" /> {isSigningIn ? 'CONNECTING...' : 'SIGN IN TO JOIN'}
         </Button>
       </div>
     );
