@@ -17,8 +17,8 @@ export default function Gallery() {
   const [page, setPage] = useState(1);
   const limit = 12;
   
-  const { data: listData, isLoading } = useListLevels({ page, limit });
-  const { data: stats } = useGetLevelStats();
+  const { data: listData, isLoading, isError: isLevelsError, error: levelsError, refetch: refetchLevels } = useListLevels({ page, limit }, { query: { retry: false } });
+  const { data: stats } = useGetLevelStats({ query: { retry: false } });
   const { summary } = useCourseProgress();
   const isPremiumUnlocked = summary.quizPassed >= 2;
 
@@ -94,6 +94,23 @@ export default function Gallery() {
               <Card key={i} className="h-48 bg-black/50 border-border animate-pulse" />
             ))}
           </div>
+        ) : isLevelsError ? (
+          <Card className="border-amber-500/30 bg-amber-500/5 p-6 md:p-8">
+            <div className="max-w-2xl mx-auto text-center space-y-4">
+              <Database className="w-10 h-10 mx-auto text-amber-400" />
+              <h2 className="font-mono text-lg text-white">ARCHIVE SERVICE UNAVAILABLE</h2>
+              <p className="text-sm text-muted-foreground">
+                The public demo is running, but its level-gallery API is not connected yet. The rest of PathForge can still be explored from the Lab and Courses tabs.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button variant="outline" onClick={() => refetchLevels()} className="font-mono">RETRY CONNECTION</Button>
+                <Link href="/lab"><Button className="font-mono">OPEN THE LAB</Button></Link>
+              </div>
+              <p className="text-xs text-muted-foreground/70">
+                {levelsError instanceof Error ? levelsError.message : 'The gallery API could not be reached.'}
+              </p>
+            </div>
+          </Card>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
